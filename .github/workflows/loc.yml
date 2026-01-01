@@ -11,84 +11,40 @@ jobs:
   count-loc:
     name: Count Lines of Code
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install tokei
-        run: |
-          curl -sSL https://github.com/XAMPPRocky/tokei/releases/download/v12.1.2/tokei-x86_64-unknown-linux-gnu.tar.gz | tar xz
-          sudo mv tokei /usr/local/bin/
+      - name: Install cloc
+        run: sudo apt-get install -y cloc
 
       - name: Count lines of code
-        id: loc
         run: |
-          # Run tokei and capture output
-          echo "Running tokei..."
-          tokei --sort code
+          echo "📊 Lines of Code Report"
+          echo "========================"
+          cloc . --vcs=git --exclude-dir=node_modules,dist,.expo,.next --exclude-ext=lock | tee cloc-output.txt
           
-          # Get total for badge
-          TOTAL=$(tokei --output json | jq '.Total.code')
-          echo "Total lines: $TOTAL"
-          echo "total=$TOTAL" >> $GITHUB_OUTPUT
-          
-          # Write to summary
-          {
-            echo "## 📊 Lines of Code Report"
-            echo ""
-            echo '```'
-            tokei --sort code
-            echo '```'
-            echo ""
-            echo "**Total lines of code:** $TOTAL"
-          } >> $GITHUB_STEP_SUMMARY
+          # Also write to summary
+          echo "## 📊 Lines of Code Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          cat cloc-output.txt >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
 
       - name: Breakdown by directory
         run: |
+          echo ""
+          echo "📁 By Directory"
+          echo "==============="
+          
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 📁 By Directory" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Directory | Lines |" >> $GITHUB_STEP_SUMMARY
-          echo "|-----------|-------|" >> $GITHUB_STEP_SUMMARY
           
-          for dir in app components utils types supabase documentation; do
+          for dir in app components lib contexts hooks supabase; do
             if [ -d "$dir" ]; then
-              COUNT=$(tokei "$dir" --output json 2>/dev/null | jq '.Total.code // 0')
-              echo "| \`$dir/\` | $COUNT |" >> $GITHUB_STEP_SUMMARY
+              echo "--- $dir/ ---"
+              cloc "$dir" --vcs=git --quiet
             fi
           done
-
-      - name: Comment on PR
-        if: github.event_name == 'pull_request'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const total = '${{ steps.loc.outputs.total }}';
-            const body = `📊 **Lines of Code:** ${parseInt(total).toLocaleString()}\n\nSee the [workflow summary](${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}) for a detailed breakdown.`;
-            
-            // Find existing comment
-            const { data: comments } = await github.rest.issues.listComments({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-            });
-            
-            const botComment = comments.find(c => c.body.includes('📊 **Lines of Code:**'));
-            
-            if (botComment) {
-              await github.rest.issues.updateComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                comment_id: botComment.id,
-                body: body
-              });
-            } else {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: context.issue.number,
-                body: body
-              });
-            }
-
