@@ -1,4 +1,4 @@
-# Multi-Tenant SaaS Platform
+# Nodey - Multi-Tenant SaaS Platform
 
 A production-ready multi-tenant architecture using **schema-per-tenant isolation** built with Next.js, Supabase, and Bun.
 
@@ -127,8 +127,24 @@ bun run lint     # Run ESLint
 - **Schema-level isolation** via PostgreSQL GRANT/REVOKE
 - **Audit logging** for compliance and debugging
 - **Suspension** instantly revokes all access
+- **Automated vulnerability scanning** via Dependabot and OSV-Scanner
+
+See our [Security Policy](./SECURITY.md) for vulnerability reporting guidelines.
+
+## 📜 Terms of Service
+
+By using this software, you agree to our [Terms of Service](./TERMS.md), which includes:
+
+- Limitation of liability for maintainers and contributors
+- No warranty guarantees
+- Indemnification clauses
+- Protection for upstream authors and forkers
+
+**Important:** If you fork this project, you must maintain the LICENSE and liability protections.
 
 ## 📄 License
 
-MIT
+[MIT License with Enhanced Liability Protection](./LICENSE)
+
+This license protects the original authors, contributors, forkers, and anyone who builds upon this software. See [LICENSE](./LICENSE) for full details.
 
