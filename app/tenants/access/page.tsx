@@ -118,7 +118,7 @@ export default async function AccessPage() {
         <Link href="/tenants">
           <Button variant="ghost" size="sm" className="mb-4 gap-2">
             <ArrowLeft className="h-4 w-4" />
-            Back to Schemas
+            Back to Nodes
           </Button>
         </Link>
 

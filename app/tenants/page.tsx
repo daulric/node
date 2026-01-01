@@ -274,7 +274,7 @@ export default async function TenantsPage() {
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-2">
-            <h1 className="text-3xl font-bold tracking-tight">Schema Management</h1>
+            <h1 className="text-3xl font-bold tracking-tight">Node Management</h1>
             {user.isAdmin && (
               <Badge variant="secondary" className="gap-1">
                 <Shield className="h-3 w-3" />
@@ -283,7 +283,7 @@ export default async function TenantsPage() {
             )}
           </div>
           <p className="text-muted-foreground max-w-2xl">
-            Manage your multi-tenant database schemas. Create new client schemas, 
+            Manage your multi-tenant database nodes. Create new client nodes, 
             configure product modules, and control access permissions.
           </p>
           {user.isAdmin && (
@@ -302,7 +302,7 @@ export default async function TenantsPage() {
           <div className="grid gap-8 lg:grid-cols-[1fr_400px]">
             {/* Tenant List */}
             <div className="order-2 lg:order-1">
-              <h2 className="text-lg font-semibold mb-4">Active Schemas</h2>
+              <h2 className="text-lg font-semibold mb-4">Active Nodes</h2>
               <Suspense fallback={<TenantTableSkeleton />}>
                 <TenantList />
               </Suspense>
@@ -318,7 +318,7 @@ export default async function TenantsPage() {
             <Shield className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
             <h2 className="text-xl font-semibold mb-2">Access Required</h2>
             <p className="text-muted-foreground max-w-md mx-auto">
-              You don&apos;t have administrator access to manage schemas. 
+              You don&apos;t have administrator access to manage nodes. 
               Please contact a super administrator to request access.
             </p>
           </div>

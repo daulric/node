@@ -149,7 +149,7 @@ export default async function SchemaDetailPage({ params }: PageProps) {
               <div className="p-2 rounded-lg bg-primary/10">
                 <Database className="h-5 w-5 text-primary" />
               </div>
-              <span className="font-semibold">Schema Manager</span>
+              <span className="font-semibold">Node Manager</span>
             </div>
             <UserNav user={user} />
           </div>
@@ -161,7 +161,7 @@ export default async function SchemaDetailPage({ params }: PageProps) {
         <Link href="/tenants">
           <Button variant="ghost" size="sm" className="mb-4 gap-2">
             <ArrowLeft className="h-4 w-4" />
-            Back to Schemas
+            Back to Nodes
           </Button>
         </Link>
 

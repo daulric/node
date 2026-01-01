@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Node | Multi-Tenant Admin",
-  description: "Manage multi-tenant database schemas with Supabase",
+  description: "Manage multi-tenant database nodes with Supabase",
 };
 
 export default function RootLayout({

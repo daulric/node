@@ -17,11 +17,11 @@ export default function Home() {
           <h1 className="text-5xl md:text-6xl font-bold tracking-tight mb-6 bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">
             Multi-Tenant
             <br />
-            Schema Management
+            Node Management
           </h1>
           
           <p className="text-xl text-slate-300 max-w-2xl mx-auto mb-8">
-            Create and manage isolated database schemas for your multi-tenant application. 
+            Create and manage isolated database nodes for your multi-tenant application. 
             View tables, columns, and control access with ease.
           </p>
           
@@ -47,7 +47,7 @@ export default function Home() {
             </CardHeader>
             <CardContent>
               <ul className="text-sm text-slate-300 space-y-2">
-                <li>• Create schemas on demand</li>
+                <li>• Create nodes on demand</li>
                 <li>• Automatic table provisioning</li>
                 <li>• Clean namespace separation</li>
               </ul>
