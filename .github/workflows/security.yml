@@ -52,18 +52,19 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Install OSV-Scanner
+        run: |
+          curl -fsSL https://github.com/google/osv-scanner/releases/latest/download/osv-scanner_linux_amd64 -o osv-scanner
+          chmod +x osv-scanner
+
       - name: Run OSV-Scanner
-        uses: google/osv-scanner-action@v1
-        id: osv-scanner
         continue-on-error: true
-        with:
-          scan-args: |-
-            --lockfile=bun.lock
-            --format=sarif
-            --output=osv-results.sarif
+        run: |
+          ./osv-scanner --lockfile=bun.lock --format=sarif --output=osv-results.sarif
 
       - name: Upload SARIF to GitHub Security
         uses: github/codeql-action/upload-sarif@v3
+        if: always()
         with:
           sarif_file: osv-results.sarif
           category: "OSV-Scanner"
