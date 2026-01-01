@@ -196,100 +196,100 @@ export function TenantTable({ initialTenants }: TenantTableProps) {
                   User Schemas ({userSchemas.length})
                 </h3>
               )}
-              <div className="rounded-lg border bg-card">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Schema Name</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="hidden md:table-cell">Created</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
+      <div className="rounded-lg border bg-card">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Schema Name</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="hidden md:table-cell">Created</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
                     {userSchemas.map(tenant => (
-                      <TableRow key={tenant.id} className={isLoading === tenant.schema_name ? 'opacity-50' : ''}>
-                        <TableCell className="font-medium">
-                          <Link 
-                            href={`/tenants/${tenant.schema_name}`}
-                            className="flex items-center gap-2 hover:text-primary transition-colors group"
-                          >
-                            <Database className="h-4 w-4 text-muted-foreground group-hover:text-primary" />
-                            <span className="font-mono text-sm">{tenant.schema_name}</span>
-                            <ExternalLink className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                <TableRow key={tenant.id} className={isLoading === tenant.schema_name ? 'opacity-50' : ''}>
+                  <TableCell className="font-medium">
+                    <Link 
+                      href={`/tenants/${tenant.schema_name}`}
+                      className="flex items-center gap-2 hover:text-primary transition-colors group"
+                    >
+                      <Database className="h-4 w-4 text-muted-foreground group-hover:text-primary" />
+                      <span className="font-mono text-sm">{tenant.schema_name}</span>
+                      <ExternalLink className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </Link>
+                    {tenant.display_name && tenant.display_name !== tenant.schema_name && (
+                      <p className="text-xs text-muted-foreground mt-0.5 ml-6">
+                        {tenant.display_name}
+                      </p>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={tenant.status === 'active' ? 'default' : 'secondary'}>
+                      {tenant.status === 'active' ? (
+                        <span className="flex items-center gap-1">
+                          <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
+                          Active
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-1">
+                          <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                          Suspended
+                        </span>
+                      )}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="hidden md:table-cell text-muted-foreground">
+                    {formatDate(tenant.created_at)}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          disabled={isLoading === tenant.schema_name}
+                        >
+                          <MoreHorizontal className="h-4 w-4" />
+                          <span className="sr-only">Open menu</span>
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem asChild>
+                          <Link href={`/tenants/${tenant.schema_name}`}>
+                            <Database className="mr-2 h-4 w-4" />
+                            View Tables
                           </Link>
-                          {tenant.display_name && tenant.display_name !== tenant.schema_name && (
-                            <p className="text-xs text-muted-foreground mt-0.5 ml-6">
-                              {tenant.display_name}
-                            </p>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={tenant.status === 'active' ? 'default' : 'secondary'}>
-                            {tenant.status === 'active' ? (
-                              <span className="flex items-center gap-1">
-                                <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
-                                Active
-                              </span>
-                            ) : (
-                              <span className="flex items-center gap-1">
-                                <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-                                Suspended
-                              </span>
-                            )}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="hidden md:table-cell text-muted-foreground">
-                          {formatDate(tenant.created_at)}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                disabled={isLoading === tenant.schema_name}
-                              >
-                                <MoreHorizontal className="h-4 w-4" />
-                                <span className="sr-only">Open menu</span>
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem asChild>
-                                <Link href={`/tenants/${tenant.schema_name}`}>
-                                  <Database className="mr-2 h-4 w-4" />
-                                  View Tables
-                                </Link>
-                              </DropdownMenuItem>
-                              {tenant.status === 'active' ? (
-                                <DropdownMenuItem
-                                  onClick={() => handleStatusChange(tenant.schema_name, 'suspend')}
-                                >
-                                  <PowerOff className="mr-2 h-4 w-4" />
-                                  Suspend Access
-                                </DropdownMenuItem>
-                              ) : (
-                                <DropdownMenuItem
-                                  onClick={() => handleStatusChange(tenant.schema_name, 'activate')}
-                                >
-                                  <Power className="mr-2 h-4 w-4" />
-                                  Reactivate Access
-                                </DropdownMenuItem>
-                              )}
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem
-                                className="text-destructive focus:text-destructive"
-                                onClick={() => setDeleteDialog({ open: true, schema: tenant.schema_name })}
-                              >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Delete Schema
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
+                        </DropdownMenuItem>
+                        {tenant.status === 'active' ? (
+                          <DropdownMenuItem
+                            onClick={() => handleStatusChange(tenant.schema_name, 'suspend')}
+                          >
+                            <PowerOff className="mr-2 h-4 w-4" />
+                            Suspend Access
+                          </DropdownMenuItem>
+                        ) : (
+                          <DropdownMenuItem
+                            onClick={() => handleStatusChange(tenant.schema_name, 'activate')}
+                          >
+                            <Power className="mr-2 h-4 w-4" />
+                            Reactivate Access
+                          </DropdownMenuItem>
+                        )}
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          className="text-destructive focus:text-destructive"
+                          onClick={() => setDeleteDialog({ open: true, schema: tenant.schema_name })}
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Delete Schema
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
                     ))}
                   </TableBody>
                 </Table>
@@ -397,9 +397,9 @@ export function TenantTable({ initialTenants }: TenantTableProps) {
                         </TableCell>
                       </TableRow>
                     ))}
-                  </TableBody>
-                </Table>
-              </div>
+          </TableBody>
+        </Table>
+      </div>
             </div>
           )}
         </div>

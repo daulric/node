@@ -114,7 +114,7 @@ function LoginForm() {
           </div>
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label htmlFor="password" className="text-slate-300">Password</Label>
+            <Label htmlFor="password" className="text-slate-300">Password</Label>
               <Link 
                 href="/forgot-password" 
                 className="text-xs text-emerald-400 hover:text-emerald-300 transition-colors"
@@ -124,17 +124,17 @@ function LoginForm() {
               </Link>
             </div>
             <div className="relative">
-              <Input
-                id="password"
+            <Input
+              id="password"
                 type={showPassword ? 'text' : 'password'}
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                disabled={isLoading}
+              placeholder="••••••••"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              disabled={isLoading}
                 autoComplete="current-password"
                 className="bg-slate-900/50 border-slate-600 text-white placeholder:text-slate-500 pr-10 focus:border-emerald-500 focus:ring-emerald-500/20"
-              />
+            />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}

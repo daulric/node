@@ -383,39 +383,39 @@ export default async function TenantsPage() {
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-2">
             <h1 className="text-3xl font-bold tracking-tight">Node Management</h1>
-            <Badge variant="secondary" className="gap-1">
-              <Shield className="h-3 w-3" />
-              {user.isSuperAdmin ? 'Super Admin' : 'Admin'}
-            </Badge>
+              <Badge variant="secondary" className="gap-1">
+                <Shield className="h-3 w-3" />
+                {user.isSuperAdmin ? 'Super Admin' : 'Admin'}
+              </Badge>
           </div>
           <p className="text-muted-foreground max-w-2xl">
             Manage your multi-tenant database nodes. Create new client nodes, 
             configure product modules, and control access permissions.
           </p>
-          <div className="flex gap-2 mt-4">
-            <Link href="/tenants/access">
-              <Button variant="outline" size="sm" className="gap-2">
-                <Users className="h-4 w-4" />
-                Manage User Access
-              </Button>
-            </Link>
-          </div>
+            <div className="flex gap-2 mt-4">
+              <Link href="/tenants/access">
+                <Button variant="outline" size="sm" className="gap-2">
+                  <Users className="h-4 w-4" />
+                  Manage User Access
+                </Button>
+              </Link>
+            </div>
         </div>
 
-        <div className="grid gap-8 lg:grid-cols-[1fr_400px]">
-          {/* Tenant List */}
-          <div className="order-2 lg:order-1">
-            <h2 className="text-lg font-semibold mb-4">Active Nodes</h2>
-            <Suspense fallback={<TenantTableSkeleton />}>
-              <TenantList />
-            </Suspense>
-          </div>
+          <div className="grid gap-8 lg:grid-cols-[1fr_400px]">
+            {/* Tenant List */}
+            <div className="order-2 lg:order-1">
+              <h2 className="text-lg font-semibold mb-4">Active Nodes</h2>
+              <Suspense fallback={<TenantTableSkeleton />}>
+                <TenantList />
+              </Suspense>
+            </div>
 
-          {/* Create Form */}
-          <div className="order-1 lg:order-2">
-            <CreateTenantForm />
+            {/* Create Form */}
+            <div className="order-1 lg:order-2">
+              <CreateTenantForm />
+            </div>
           </div>
-        </div>
       </div>
     </div>
   )

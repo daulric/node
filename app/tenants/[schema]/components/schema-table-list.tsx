@@ -653,10 +653,10 @@ export function SchemaTableList({ tables: initialTables, schemaName, canWrite = 
           </Badge>
         </div>
         {canWrite && (
-          <Button onClick={() => setCreateTableDialog(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Create Table
-          </Button>
+        <Button onClick={() => setCreateTableDialog(true)}>
+          <Plus className="h-4 w-4 mr-2" />
+          Create Table
+        </Button>
         )}
       </div>
 
@@ -737,17 +737,17 @@ export function SchemaTableList({ tables: initialTables, schemaName, canWrite = 
                             </Badge>
                           )}
                           {canWrite && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                setAddColumnDialog({ open: true, table: table.table_name })
-                              }}
-                            >
-                              <Plus className="h-3.5 w-3.5 mr-1" />
-                              Add Column
-                            </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setAddColumnDialog({ open: true, table: table.table_name })
+                            }}
+                          >
+                            <Plus className="h-3.5 w-3.5 mr-1" />
+                            Add Column
+                          </Button>
                           )}
                           {canWrite && !(schemaName === 'public' ? PUBLIC_SYSTEM_TABLES.includes(table.table_name) : TENANT_DEFAULT_TABLES.includes(table.table_name)) && (
                             <Button
@@ -889,14 +889,14 @@ export function SchemaTableList({ tables: initialTables, schemaName, canWrite = 
                                   ON DELETE {fk.on_delete}
                                 </span>
                                 {canWrite && (
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                                    onClick={() => handleDropForeignKey(table.table_name, fk.constraint_name)}
-                                  >
-                                    <X className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive" />
-                                  </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                  onClick={() => handleDropForeignKey(table.table_name, fk.constraint_name)}
+                                >
+                                  <X className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive" />
+                                </Button>
                                 )}
                               </div>
                             ))}
@@ -943,8 +943,8 @@ export function SchemaTableList({ tables: initialTables, schemaName, canWrite = 
                   }
                 </p>
                 {systemTables.map(renderTable)}
-              </div>
-            )}
+        </div>
+      )}
 
             {/* User Tables Section */}
             {userTables.length > 0 && (
@@ -997,9 +997,9 @@ export function SchemaTableList({ tables: initialTables, schemaName, canWrite = 
               {newColumn.name && validateName(newColumn.name, 'column') ? (
                 <p className="text-xs text-destructive">{validateName(newColumn.name, 'column')}</p>
               ) : (
-                <p className="text-xs text-muted-foreground">
-                  Lowercase with letters, numbers, underscores
-                </p>
+              <p className="text-xs text-muted-foreground">
+                Lowercase with letters, numbers, underscores
+              </p>
               )}
             </div>
             <div className="space-y-2">
@@ -1086,9 +1086,9 @@ export function SchemaTableList({ tables: initialTables, schemaName, canWrite = 
               {validateName(newTableName, 'table') ? (
                 <p className="text-xs text-destructive">{validateName(newTableName, 'table')}</p>
               ) : (
-                <p className="text-xs text-muted-foreground">
-                  Lowercase with letters, numbers, underscores
-                </p>
+              <p className="text-xs text-muted-foreground">
+                Lowercase with letters, numbers, underscores
+              </p>
               )}
             </div>
 
