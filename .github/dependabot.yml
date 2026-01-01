@@ -1,0 +1,102 @@
+version: 2
+
+updates:
+  # JavaScript/Bun dependencies
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Etc/UTC"
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "automated"
+    # Note: Use CODEOWNERS file or branch protection rules to auto-assign reviewers
+    # The 'reviewers' property is valid but may show false errors in some IDE schema validators
+    assignees:
+      - "daulric"
+    groups:
+      # Group Next.js packages
+      nextjs:
+        patterns:
+          - "next"
+          - "next-*"
+          - "@next/*"
+        update-types:
+          - "minor"
+          - "patch"
+      # Group React packages
+      react:
+        patterns:
+          - "react"
+          - "react-dom"
+          - "@types/react"
+          - "@types/react-dom"
+        update-types:
+          - "minor"
+          - "patch"
+      # Group Supabase packages
+      supabase:
+        patterns:
+          - "@supabase/*"
+      # Group Radix UI packages
+      radix-ui:
+        patterns:
+          - "@radix-ui/*"
+      # Group Tailwind packages
+      tailwind:
+        patterns:
+          - "tailwindcss"
+          - "@tailwindcss/*"
+          - "tw-*"
+      # Group all dev dependencies
+      dev-dependencies:
+        dependency-type: "development"
+        update-types:
+          - "minor"
+          - "patch"
+      # Group all minor/patch production deps
+      production-minor:
+        dependency-type: "production"
+        update-types:
+          - "minor"
+          - "patch"
+        exclude-patterns:
+          - "next"
+          - "react"
+          - "react-dom"
+          - "@supabase/*"
+          - "@radix-ui/*"
+    ignore:
+      # Ignore major versions - review manually
+      - dependency-name: "react"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react-dom"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "next"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
+
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    commit-message:
+      prefix: "ci"
+    labels:
+      - "ci"
+      - "automated"
+    groups:
+      # Group all actions together
+      actions:
+        patterns:
+          - "*"
+
