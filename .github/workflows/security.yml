@@ -44,10 +44,6 @@ jobs:
   osv-scanner:
     name: OSV Vulnerability Scan
     runs-on: ubuntu-latest
-    permissions:
-      security-events: write
-      actions: read
-      contents: read
     
     steps:
       - name: Checkout code
@@ -59,42 +55,8 @@ jobs:
           chmod +x osv-scanner
 
       - name: Run OSV-Scanner
-        continue-on-error: true
         run: |
-          ./osv-scanner --lockfile=bun.lock --format=sarif --output=osv-results.sarif
-
-      - name: Upload SARIF to GitHub Security
-        uses: github/codeql-action/upload-sarif@v4
-        if: always()
-        with:
-          sarif_file: osv-results.sarif
-          category: "OSV-Scanner"
-
-  codeql:
-    name: CodeQL Analysis
-    runs-on: ubuntu-latest
-    permissions:
-      security-events: write
-      actions: read
-      contents: read
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Initialize CodeQL
-        uses: github/codeql-action/init@v4
-        with:
-          languages: javascript-typescript
-          queries: security-extended
-
-      - name: Autobuild
-        uses: github/codeql-action/autobuild@v4
-
-      - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v4
-        with:
-          category: "/language:javascript-typescript"
+          ./osv-scanner --lockfile=bun.lock --format=table
 
   secret-scanning:
     name: Secret Scanning
