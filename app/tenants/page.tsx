@@ -196,6 +196,7 @@ interface UserInfo {
   isSuperAdmin: boolean
   role: string | null
   accessibleSchemas: { tenant_schema: string; access_level: string }[]
+  avatarUrl?: string | null
 }
 
 async function getUser(): Promise<UserInfo | null> {
@@ -226,6 +227,7 @@ async function getUser(): Promise<UserInfo | null> {
     isSuperAdmin,
     role: adminUser?.role || null,
     accessibleSchemas: schemaAccess || [],
+    avatarUrl: user.user_metadata?.avatar_url || null,
   }
 }
 

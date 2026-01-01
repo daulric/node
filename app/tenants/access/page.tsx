@@ -12,6 +12,7 @@ interface UserInfo {
   isAdmin: boolean
   isSuperAdmin: boolean
   role: string | null
+  avatarUrl?: string | null
 }
 
 interface SchemaAccess {
@@ -44,6 +45,7 @@ async function getUser(): Promise<UserInfo | null> {
     isAdmin,
     isSuperAdmin,
     role: adminUser?.role || null,
+    avatarUrl: user.user_metadata?.avatar_url || null,
   }
 }
 

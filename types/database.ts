@@ -504,6 +504,16 @@ export type Database = {
           is_new: boolean
         }[]
       }
+      create_default_tables: {
+        Args: {
+          target_schema: string
+        }
+        Returns: {
+          table_name: string
+          created: boolean
+          message: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never

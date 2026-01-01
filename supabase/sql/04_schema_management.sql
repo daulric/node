@@ -444,6 +444,146 @@ BEGIN
 END;
 $$;
 
+-- =============================================================================
+-- CREATE DEFAULT TABLES IN SCHEMA
+-- =============================================================================
+-- Creates missing default tables (settings, users, audit_log) in an existing schema
+
+DROP FUNCTION IF EXISTS public.create_default_tables(TEXT);
+
+CREATE OR REPLACE FUNCTION public.create_default_tables(target_schema TEXT)
+RETURNS TABLE(
+  table_name TEXT,
+  created BOOLEAN,
+  message TEXT
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_settings_exists BOOLEAN;
+  v_users_exists BOOLEAN;
+  v_audit_log_exists BOOLEAN;
+BEGIN
+  -- Check if user is an admin
+  IF NOT public.is_admin() THEN
+    RAISE EXCEPTION 'Access denied: only administrators can create default tables';
+  END IF;
+
+  -- Verify schema exists in tenants
+  IF NOT EXISTS (SELECT 1 FROM public.tenants WHERE tenants.schema_name = target_schema) THEN
+    RAISE EXCEPTION 'Schema "%" not found in registered tenants', target_schema;
+  END IF;
+
+  -- Check which default tables already exist
+  SELECT EXISTS (
+    SELECT 1 FROM information_schema.tables t
+    WHERE t.table_schema = target_schema AND t.table_name = 'settings'
+  ) INTO v_settings_exists;
+
+  SELECT EXISTS (
+    SELECT 1 FROM information_schema.tables t
+    WHERE t.table_schema = target_schema AND t.table_name = 'users'
+  ) INTO v_users_exists;
+
+  SELECT EXISTS (
+    SELECT 1 FROM information_schema.tables t
+    WHERE t.table_schema = target_schema AND t.table_name = 'audit_log'
+  ) INTO v_audit_log_exists;
+
+  -- Create settings table if missing
+  IF NOT v_settings_exists THEN
+    EXECUTE format('
+      CREATE TABLE %I.settings (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        key TEXT UNIQUE NOT NULL,
+        value JSONB,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_at TIMESTAMPTZ DEFAULT NOW()
+      )', target_schema);
+    
+    table_name := 'settings';
+    created := TRUE;
+    message := 'Created successfully';
+    RETURN NEXT;
+  ELSE
+    table_name := 'settings';
+    created := FALSE;
+    message := 'Already exists';
+    RETURN NEXT;
+  END IF;
+
+  -- Create users table if missing
+  IF NOT v_users_exists THEN
+    EXECUTE format('
+      CREATE TABLE %I.users (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        auth_user_id UUID UNIQUE REFERENCES auth.users(id) ON DELETE CASCADE,
+        email TEXT UNIQUE NOT NULL,
+        name TEXT,
+        role TEXT DEFAULT ''user'',
+        metadata JSONB DEFAULT ''{}''::jsonb,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_at TIMESTAMPTZ DEFAULT NOW()
+      )', target_schema);
+    
+    -- Create index for faster auth lookups
+    EXECUTE format('CREATE INDEX IF NOT EXISTS idx_%I_users_auth_user_id ON %I.users(auth_user_id)', 
+                   target_schema, target_schema);
+    
+    table_name := 'users';
+    created := TRUE;
+    message := 'Created successfully';
+    RETURN NEXT;
+  ELSE
+    table_name := 'users';
+    created := FALSE;
+    message := 'Already exists';
+    RETURN NEXT;
+  END IF;
+
+  -- Create audit_log table if missing
+  IF NOT v_audit_log_exists THEN
+    EXECUTE format('
+      CREATE TABLE %I.audit_log (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        table_name TEXT NOT NULL,
+        record_id UUID,
+        action TEXT NOT NULL,
+        old_data JSONB,
+        new_data JSONB,
+        performed_by UUID,
+        performed_at TIMESTAMPTZ DEFAULT NOW()
+      )', target_schema);
+    
+    table_name := 'audit_log';
+    created := TRUE;
+    message := 'Created successfully';
+    RETURN NEXT;
+  ELSE
+    table_name := 'audit_log';
+    created := FALSE;
+    message := 'Already exists';
+    RETURN NEXT;
+  END IF;
+
+  -- Ensure permissions are granted
+  EXECUTE format('GRANT USAGE ON SCHEMA %I TO authenticated', target_schema);
+  EXECUTE format('GRANT ALL ON ALL TABLES IN SCHEMA %I TO authenticated', target_schema);
+  EXECUTE format('GRANT ALL ON ALL SEQUENCES IN SCHEMA %I TO authenticated', target_schema);
+
+  -- Log the action
+  INSERT INTO public.admin_audit_log (user_id, action, resource_type, resource_id, details)
+  VALUES (auth.uid(), 'CREATE_DEFAULT_TABLES', 'schema', target_schema, 
+          jsonb_build_object(
+            'settings_created', NOT v_settings_exists,
+            'users_created', NOT v_users_exists,
+            'audit_log_created', NOT v_audit_log_exists
+          ));
+END;
+$$;
+
 -- Grant execute permissions
 GRANT EXECUTE ON FUNCTION public.create_tenant_schema(TEXT, TEXT) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.suspend_tenant(TEXT) TO authenticated;
@@ -452,4 +592,5 @@ GRANT EXECUTE ON FUNCTION public.delete_tenant_schema(TEXT) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.create_user_profile(TEXT, TEXT, TEXT, TEXT, JSONB) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.get_user_profile(TEXT) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.ensure_user_profile(TEXT, TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.create_default_tables(TEXT) TO authenticated;
 

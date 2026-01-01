@@ -248,6 +248,9 @@ export function SchemaTableList({ tables: initialTables, schemaName, canWrite = 
   })
   const [isDeletingTable, setIsDeletingTable] = useState(false)
   const [forceCascade, setForceCascade] = useState(false)
+  
+  // Create default tables state
+  const [isCreatingDefaultTables, setIsCreatingDefaultTables] = useState(false)
 
   // Load reference tables when dialog opens
   useEffect(() => {
@@ -454,6 +457,9 @@ export function SchemaTableList({ tables: initialTables, schemaName, canWrite = 
         { ...createEmptyColumn(), name: 'created_at', type: 'timestamp with time zone', nullable: false, default: 'NOW()' },
       ])
       
+      // Clear reference tables cache so it reloads with the new table
+      setReferenceTables([])
+      
       // Refresh the tables list
       router.refresh()
     } catch (error) {
@@ -564,6 +570,9 @@ export function SchemaTableList({ tables: initialTables, schemaName, canWrite = 
       setTables(prev => prev.filter(t => t.table_name !== tableName))
       setDeleteTableDialog({ open: false, table: null, hasDependencies: false, dependencyError: null })
       setForceCascade(false)
+      
+      // Clear reference tables cache so it reloads without the deleted table
+      setReferenceTables([])
       toast.success(`Table "${tableName}" deleted successfully`)
       
       // Refresh from server
@@ -573,6 +582,42 @@ export function SchemaTableList({ tables: initialTables, schemaName, canWrite = 
       toast.error(error instanceof Error ? error.message : 'Failed to delete table')
     } finally {
       setIsDeletingTable(false)
+    }
+  }
+
+  // Check which default tables are missing (only for non-public schemas)
+  const missingDefaultTables = schemaName !== 'public' 
+    ? TENANT_DEFAULT_TABLES.filter(dt => !tables.some(t => t.table_name === dt))
+    : []
+
+  const handleCreateDefaultTables = async () => {
+    setIsCreatingDefaultTables(true)
+    try {
+      const supabase = createClient()
+      
+      const { data, error } = await supabase.rpc('create_default_tables', {
+        target_schema: schemaName,
+      })
+
+      if (error) throw error
+
+      const createdTables = data?.filter((t: { created: boolean }) => t.created) || []
+      if (createdTables.length > 0) {
+        toast.success(`Created ${createdTables.length} default table(s): ${createdTables.map((t: { table_name: string }) => t.table_name).join(', ')}`)
+        
+        // Clear reference tables cache so it reloads with the new tables
+        setReferenceTables([])
+      } else {
+        toast.info('All default tables already exist')
+      }
+      
+      // Refresh the tables list
+      router.refresh()
+    } catch (error) {
+      console.error('Error creating default tables:', error)
+      toast.error(error instanceof Error ? error.message : 'Failed to create default tables')
+    } finally {
+      setIsCreatingDefaultTables(false)
     }
   }
 
@@ -917,10 +962,39 @@ export function SchemaTableList({ tables: initialTables, schemaName, canWrite = 
                 <Table2 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                 <p className="text-muted-foreground mb-4">No tables found in this schema.</p>
                 {canWrite && (
-                  <Button onClick={() => setCreateTableDialog(true)}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Create Your First Table
-                  </Button>
+                  <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                    {!isPublicSchema && (
+                      <Button 
+                        variant="default"
+                        onClick={handleCreateDefaultTables}
+                        disabled={isCreatingDefaultTables}
+                      >
+                        {isCreatingDefaultTables ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Creating...
+                          </>
+                        ) : (
+                          <>
+                            <Key className="h-4 w-4 mr-2" />
+                            Create Default Tables
+                          </>
+                        )}
+                      </Button>
+                    )}
+                    <Button 
+                      variant={isPublicSchema ? "default" : "outline"}
+                      onClick={() => setCreateTableDialog(true)}
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Create Custom Table
+                    </Button>
+                  </div>
+                )}
+                {canWrite && !isPublicSchema && (
+                  <p className="text-xs text-muted-foreground mt-4">
+                    Default tables include: <span className="font-mono">settings</span>, <span className="font-mono">users</span>, <span className="font-mono">audit_log</span>
+                  </p>
                 )}
               </CardContent>
             </Card>
@@ -929,6 +1003,52 @@ export function SchemaTableList({ tables: initialTables, schemaName, canWrite = 
 
         return (
           <div className="space-y-6">
+            {/* Missing Default Tables Alert */}
+            {!isPublicSchema && missingDefaultTables.length > 0 && canWrite && (
+              <Card className="border-amber-500/30 bg-amber-500/5">
+                <CardContent className="py-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex items-start gap-3">
+                      <Key className="h-5 w-5 text-amber-500 mt-0.5" />
+                      <div>
+                        <h4 className="font-medium text-amber-700 dark:text-amber-400">
+                          Missing Default Tables
+                        </h4>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          This schema is missing {missingDefaultTables.length} default table(s): {' '}
+                          <span className="font-mono text-amber-600 dark:text-amber-400">
+                            {missingDefaultTables.join(', ')}
+                          </span>
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          These tables are recommended for standard schema functionality.
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="border-amber-500/50 text-amber-700 dark:text-amber-400 hover:bg-amber-500/10 shrink-0"
+                      onClick={handleCreateDefaultTables}
+                      disabled={isCreatingDefaultTables}
+                    >
+                      {isCreatingDefaultTables ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Creating...
+                        </>
+                      ) : (
+                        <>
+                          <Plus className="h-4 w-4 mr-2" />
+                          Create Default Tables
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Default/System Tables Section */}
             {systemTables.length > 0 && (
               <div className="space-y-2">

@@ -22,6 +22,7 @@ interface UserInfo {
   isSuperAdmin: boolean
   role: string | null
   userId: string
+  avatarUrl?: string | null
 }
 
 interface SchemaTable {
@@ -61,6 +62,7 @@ async function getUser(): Promise<UserInfo | null> {
     isSuperAdmin,
     role: adminUser?.role || null,
     userId: user.id,
+    avatarUrl: user.user_metadata?.avatar_url || null,
   }
 }
 

@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import { createClient } from '@/utils/supabase/client'
 import { Button } from '@/components/ui/button'
 import {
@@ -21,6 +22,7 @@ interface UserInfo {
   isAdmin: boolean
   isSuperAdmin: boolean
   role: string | null
+  avatarUrl?: string | null
 }
 
 interface UserNavProps {
@@ -51,9 +53,19 @@ export function UserNav({ user }: UserNavProps) {
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="gap-2">
           <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-              <User className="h-4 w-4 text-primary" />
-            </div>
+            {user.avatarUrl ? (
+              <Image
+                src={user.avatarUrl}
+                alt="Avatar"
+                width={32}
+                height={32}
+                className="h-8 w-8 rounded-full object-cover"
+              />
+            ) : (
+              <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                <User className="h-4 w-4 text-primary" />
+              </div>
+            )}
             <div className="hidden sm:block text-left">
               <p className="text-sm font-medium leading-none">{user.email}</p>
               <p className="text-xs text-muted-foreground mt-0.5">
