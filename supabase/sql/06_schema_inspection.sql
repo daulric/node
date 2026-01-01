@@ -569,6 +569,89 @@ END;
 $$;
 
 -- =============================================================================
+-- DROP TABLE
+-- =============================================================================
+
+-- Drop old function signature if exists
+DROP FUNCTION IF EXISTS public.drop_table(TEXT, TEXT);
+
+CREATE OR REPLACE FUNCTION public.drop_table(
+  target_schema TEXT,
+  target_table TEXT,
+  force_cascade BOOLEAN DEFAULT false
+)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  dependent_tables TEXT[];
+  dep_count INTEGER;
+  public_system_tables TEXT[] := ARRAY[
+    'admin_users',
+    'tenants', 
+    'user_schema_access',
+    'admin_audit_log'
+  ];
+  tenant_default_tables TEXT[] := ARRAY[
+    'settings',
+    'users',
+    'audit_log'
+  ];
+BEGIN
+  -- Check if user has admin access (dropping is destructive)
+  IF NOT public.has_schema_access(target_schema, 'admin') THEN
+    RAISE EXCEPTION 'Access denied: you need admin access to drop tables';
+  END IF;
+
+  -- Prevent deletion of protected system tables in public schema
+  IF target_schema = 'public' AND target_table = ANY(public_system_tables) THEN
+    RAISE EXCEPTION 'Cannot delete protected system table: %. This table is required for the application to function.', target_table;
+  END IF;
+
+  -- Prevent deletion of default tables in tenant schemas
+  IF target_schema != 'public' AND target_table = ANY(tenant_default_tables) THEN
+    RAISE EXCEPTION 'Cannot delete default table: %. This table is created by default in every schema.', target_table;
+  END IF;
+
+  -- Check for tables that depend on this table via foreign keys
+  SELECT array_agg(DISTINCT tc.table_schema || '.' || tc.table_name)
+  INTO dependent_tables
+  FROM information_schema.table_constraints tc
+  JOIN information_schema.constraint_column_usage ccu 
+    ON ccu.constraint_name = tc.constraint_name 
+    AND ccu.constraint_schema = tc.constraint_schema
+  WHERE tc.constraint_type = 'FOREIGN KEY'
+    AND ccu.table_schema = target_schema
+    AND ccu.table_name = target_table
+    AND NOT (tc.table_schema = target_schema AND tc.table_name = target_table);
+
+  dep_count := COALESCE(array_length(dependent_tables, 1), 0);
+
+  -- If there are dependent tables and force_cascade is false, block deletion
+  IF dep_count > 0 AND NOT force_cascade THEN
+    RAISE EXCEPTION 'Cannot delete table: % other table(s) depend on it via foreign keys: %. Use force_cascade=true to delete anyway.',
+      dep_count,
+      array_to_string(dependent_tables, ', ');
+  END IF;
+
+  -- Execute the drop (use CASCADE only if force_cascade is true)
+  IF force_cascade THEN
+    EXECUTE format('DROP TABLE IF EXISTS %I.%I CASCADE', target_schema, target_table);
+  ELSE
+    EXECUTE format('DROP TABLE IF EXISTS %I.%I', target_schema, target_table);
+  END IF;
+
+  -- Log the action
+  INSERT INTO public.admin_audit_log (user_id, action, resource_type, resource_id)
+  VALUES (auth.uid(), 'DROP_TABLE', 'table', target_schema || '.' || target_table);
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.drop_table TO authenticated;
+
+-- =============================================================================
 -- CHECK TENANT STATUS
 -- =============================================================================
 -- Allows any user (including anon) to check if a schema is active or suspended

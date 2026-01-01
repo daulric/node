@@ -195,6 +195,7 @@ interface UserInfo {
   isAdmin: boolean
   isSuperAdmin: boolean
   role: string | null
+  accessibleSchemas: { tenant_schema: string; access_level: string }[]
 }
 
 async function getUser(): Promise<UserInfo | null> {
@@ -213,11 +214,18 @@ async function getUser(): Promise<UserInfo | null> {
   const isAdmin = adminUser?.is_active === true
   const isSuperAdmin = adminUser?.role === 'super_admin' && adminUser?.is_active === true
 
+  // Get schemas the user has access to (for non-admins)
+  const { data: schemaAccess } = await supabase
+    .from('user_schema_access')
+    .select('tenant_schema, access_level')
+    .eq('user_id', user.id)
+
   return {
     email: user.email || '',
     isAdmin,
     isSuperAdmin,
     role: adminUser?.role || null,
+    accessibleSchemas: schemaAccess || [],
   }
 }
 
@@ -253,6 +261,106 @@ export default async function TenantsPage() {
     redirect('/login')
   }
 
+  // Non-admin users: redirect to their accessible schema(s)
+  if (!user.isAdmin && user.accessibleSchemas.length > 0) {
+    // If they have exactly one schema, redirect directly to it
+    if (user.accessibleSchemas.length === 1) {
+      redirect(`/tenants/${user.accessibleSchemas[0].tenant_schema}`)
+    }
+    // If they have multiple schemas, show a selection page
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
+        <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+          <div className="container mx-auto px-4 max-w-7xl">
+            <div className="flex h-16 items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-primary/10">
+                  <Database className="h-5 w-5 text-primary" />
+                </div>
+                <span className="font-semibold">Node</span>
+              </div>
+              <UserNav user={user} />
+            </div>
+          </div>
+        </header>
+
+        <div className="container mx-auto px-4 py-8 max-w-3xl">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold tracking-tight mb-2">Your Nodes</h1>
+            <p className="text-muted-foreground">
+              Select a node to view and manage its data.
+            </p>
+          </div>
+
+          <div className="grid gap-4">
+            {user.accessibleSchemas.map((schema) => (
+              <Link 
+                key={schema.tenant_schema} 
+                href={`/tenants/${schema.tenant_schema}`}
+                className="block"
+              >
+                <div className="rounded-lg border bg-card p-6 hover:bg-muted/50 transition-colors">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-lg bg-primary/10">
+                        <Database className="h-5 w-5 text-primary" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold">{schema.tenant_schema}</h3>
+                        <p className="text-sm text-muted-foreground capitalize">
+                          {schema.access_level} access
+                        </p>
+                      </div>
+                    </div>
+                    <Badge variant={
+                      schema.access_level === 'admin' ? 'default' :
+                      schema.access_level === 'write' ? 'secondary' : 'outline'
+                    }>
+                      {schema.access_level}
+                    </Badge>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // No access at all (not admin and no schema access)
+  if (!user.isAdmin) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
+        <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+          <div className="container mx-auto px-4 max-w-7xl">
+            <div className="flex h-16 items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-primary/10">
+                  <Database className="h-5 w-5 text-primary" />
+                </div>
+                <span className="font-semibold">Node</span>
+              </div>
+              <UserNav user={user} />
+            </div>
+          </div>
+        </header>
+
+        <div className="container mx-auto px-4 py-8 max-w-7xl">
+          <div className="rounded-lg border bg-card p-8 text-center">
+            <Shield className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <h2 className="text-xl font-semibold mb-2">Access Required</h2>
+            <p className="text-muted-foreground max-w-md mx-auto">
+              You don&apos;t have access to any nodes yet. 
+              Please contact an administrator to request access.
+            </p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Admin view - full node management
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
       {/* Top Navigation */}
@@ -275,54 +383,39 @@ export default async function TenantsPage() {
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-2">
             <h1 className="text-3xl font-bold tracking-tight">Node Management</h1>
-            {user.isAdmin && (
-              <Badge variant="secondary" className="gap-1">
-                <Shield className="h-3 w-3" />
-                {user.isSuperAdmin ? 'Super Admin' : 'Admin'}
-              </Badge>
-            )}
+            <Badge variant="secondary" className="gap-1">
+              <Shield className="h-3 w-3" />
+              {user.isSuperAdmin ? 'Super Admin' : 'Admin'}
+            </Badge>
           </div>
           <p className="text-muted-foreground max-w-2xl">
             Manage your multi-tenant database nodes. Create new client nodes, 
             configure product modules, and control access permissions.
           </p>
-          {user.isAdmin && (
-            <div className="flex gap-2 mt-4">
-              <Link href="/tenants/access">
-                <Button variant="outline" size="sm" className="gap-2">
-                  <Users className="h-4 w-4" />
-                  Manage User Access
-                </Button>
-              </Link>
-            </div>
-          )}
+          <div className="flex gap-2 mt-4">
+            <Link href="/tenants/access">
+              <Button variant="outline" size="sm" className="gap-2">
+                <Users className="h-4 w-4" />
+                Manage User Access
+              </Button>
+            </Link>
+          </div>
         </div>
 
-        {user.isAdmin ? (
-          <div className="grid gap-8 lg:grid-cols-[1fr_400px]">
-            {/* Tenant List */}
-            <div className="order-2 lg:order-1">
-              <h2 className="text-lg font-semibold mb-4">Active Nodes</h2>
-              <Suspense fallback={<TenantTableSkeleton />}>
-                <TenantList />
-              </Suspense>
-            </div>
+        <div className="grid gap-8 lg:grid-cols-[1fr_400px]">
+          {/* Tenant List */}
+          <div className="order-2 lg:order-1">
+            <h2 className="text-lg font-semibold mb-4">Active Nodes</h2>
+            <Suspense fallback={<TenantTableSkeleton />}>
+              <TenantList />
+            </Suspense>
+          </div>
 
-            {/* Create Form */}
-            <div className="order-1 lg:order-2">
-              <CreateTenantForm />
-            </div>
+          {/* Create Form */}
+          <div className="order-1 lg:order-2">
+            <CreateTenantForm />
           </div>
-        ) : (
-          <div className="rounded-lg border bg-card p-8 text-center">
-            <Shield className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h2 className="text-xl font-semibold mb-2">Access Required</h2>
-            <p className="text-muted-foreground max-w-md mx-auto">
-              You don&apos;t have administrator access to manage nodes. 
-              Please contact a super administrator to request access.
-            </p>
-          </div>
-        )}
+        </div>
       </div>
     </div>
   )

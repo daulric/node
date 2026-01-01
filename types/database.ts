@@ -463,6 +463,14 @@ export type Database = {
         }
         Returns: undefined
       }
+      drop_table: {
+        Args: {
+          target_schema: string
+          target_table: string
+          force_cascade?: boolean
+        }
+        Returns: undefined
+      }
       check_tenant_status: {
         Args: {
           p_schema: string

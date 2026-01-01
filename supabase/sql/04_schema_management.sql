@@ -264,10 +264,17 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
+DECLARE
+  protected_schemas TEXT[] := ARRAY['public', 'auth', 'storage', 'graphql', 'realtime', 'supabase_functions', 'extensions'];
 BEGIN
   -- Check if user is a super admin
   IF NOT public.is_super_admin() THEN
     RAISE EXCEPTION 'Access denied: only super administrators can delete schemas';
+  END IF;
+
+  -- Prevent deletion of protected system schemas
+  IF schema_name = ANY(protected_schemas) THEN
+    RAISE EXCEPTION 'Cannot delete protected system schema: %. This schema is required for the application to function.', schema_name;
   END IF;
 
   -- Verify tenant exists

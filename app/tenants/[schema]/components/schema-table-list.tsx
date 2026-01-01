@@ -20,6 +20,16 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -104,6 +114,7 @@ interface NewColumnDef {
 interface SchemaTableListProps {
   tables: SchemaTable[]
   schemaName: string
+  canWrite?: boolean
 }
 
 const DATA_TYPES = [
@@ -132,6 +143,12 @@ const ON_DELETE_OPTIONS = [
   { value: 'SET DEFAULT', label: 'Set Default' },
 ]
 
+// Protected system tables in public schema that cannot be deleted
+const PUBLIC_SYSTEM_TABLES = ['admin_users', 'tenants', 'user_schema_access', 'admin_audit_log']
+
+// Default tables created in every tenant schema
+const TENANT_DEFAULT_TABLES = ['settings', 'users', 'audit_log']
+
 const createEmptyColumn = (): NewColumnDef => ({
   id: crypto.randomUUID(),
   name: '',
@@ -141,10 +158,35 @@ const createEmptyColumn = (): NewColumnDef => ({
   primary_key: false,
 })
 
-export function SchemaTableList({ tables: initialTables, schemaName }: SchemaTableListProps) {
+// Reserved names that cannot be used for tables/columns
+const RESERVED_NAMES = ['public', 'auth', 'storage', 'graphql', 'realtime', 'supabase', 'user', 'order', 'group', 'select', 'insert', 'update', 'delete', 'table', 'column', 'index', 'constraint', 'primary', 'foreign', 'key', 'null', 'not', 'and', 'or', 'true', 'false']
+
+// Sanitize name: lowercase, replace invalid chars with underscore
+const sanitizeName = (name: string): string => {
+  return name.toLowerCase().replace(/[^a-z0-9_]/g, '_').replace(/^_+/, '').replace(/_+/g, '_')
+}
+
+// Validate name and return error message if invalid
+const validateName = (name: string, type: 'table' | 'column'): string | null => {
+  if (!name) return null // Empty is handled separately
+  if (name.length < 1) return `${type === 'table' ? 'Table' : 'Column'} name is required`
+  if (name.length > 63) return 'Name must be less than 63 characters'
+  if (!/^[a-z]/.test(name)) return 'Must start with a lowercase letter'
+  if (!/^[a-z][a-z0-9_]*$/.test(name)) return 'Only lowercase letters, numbers, and underscores'
+  if (RESERVED_NAMES.includes(name)) return `"${name}" is a reserved word`
+  if (name.startsWith('pg_')) return 'Cannot start with "pg_"'
+  return null
+}
+
+export function SchemaTableList({ tables: initialTables, schemaName, canWrite = true }: SchemaTableListProps) {
   const router = useRouter()
-  const [tables] = useState(initialTables)
+  const [tables, setTables] = useState(initialTables)
   const [expandedTables, setExpandedTables] = useState<Set<string>>(new Set())
+  
+  // Sync state with props when initialTables changes (after router.refresh())
+  useEffect(() => {
+    setTables(initialTables)
+  }, [initialTables])
   const [columns, setColumns] = useState<Record<string, TableColumn[]>>({})
   const [foreignKeys, setForeignKeys] = useState<Record<string, ForeignKey[]>>({})
   const [rowCounts, setRowCounts] = useState<Record<string, number>>({})
@@ -191,6 +233,21 @@ export function SchemaTableList({ tables: initialTables, schemaName }: SchemaTab
     onUpdate: 'NO ACTION',
   })
   const [isAddingFk, setIsAddingFk] = useState(false)
+  
+  // Delete table dialog
+  const [deleteTableDialog, setDeleteTableDialog] = useState<{ 
+    open: boolean; 
+    table: string | null;
+    hasDependencies: boolean;
+    dependencyError: string | null;
+  }>({
+    open: false,
+    table: null,
+    hasDependencies: false,
+    dependencyError: null,
+  })
+  const [isDeletingTable, setIsDeletingTable] = useState(false)
+  const [forceCascade, setForceCascade] = useState(false)
 
   // Load reference tables when dialog opens
   useEffect(() => {
@@ -476,6 +533,49 @@ export function SchemaTableList({ tables: initialTables, schemaName }: SchemaTab
     }
   }
 
+  const handleDropTable = async (forceDelete = false) => {
+    const tableName = deleteTableDialog.table
+    if (!tableName) return
+
+    setIsDeletingTable(true)
+    try {
+      const supabase = createClient()
+      
+      const { error } = await supabase.rpc('drop_table', {
+        target_schema: schemaName,
+        target_table: tableName,
+        force_cascade: forceDelete || forceCascade,
+      })
+
+      if (error) {
+        // Check if error is about dependent tables
+        if (error.message.includes('depend on it via foreign keys')) {
+          setDeleteTableDialog(prev => ({
+            ...prev,
+            hasDependencies: true,
+            dependencyError: error.message,
+          }))
+          return
+        }
+        throw error
+      }
+
+      // Update local state immediately
+      setTables(prev => prev.filter(t => t.table_name !== tableName))
+      setDeleteTableDialog({ open: false, table: null, hasDependencies: false, dependencyError: null })
+      setForceCascade(false)
+      toast.success(`Table "${tableName}" deleted successfully`)
+      
+      // Refresh from server
+      router.refresh()
+    } catch (error) {
+      console.error('Error deleting table:', error)
+      toast.error(error instanceof Error ? error.message : 'Failed to delete table')
+    } finally {
+      setIsDeletingTable(false)
+    }
+  }
+
   const addNewColumnRow = () => {
     setNewTableColumns([...newTableColumns, createEmptyColumn()])
   }
@@ -552,26 +652,22 @@ export function SchemaTableList({ tables: initialTables, schemaName }: SchemaTab
             {tables.length} {tables.length === 1 ? 'table' : 'tables'}
           </Badge>
         </div>
-        <Button onClick={() => setCreateTableDialog(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Create Table
-        </Button>
+        {canWrite && (
+          <Button onClick={() => setCreateTableDialog(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Create Table
+          </Button>
+        )}
       </div>
 
-      {tables.length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <Table2 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <p className="text-muted-foreground mb-4">No tables found in this schema.</p>
-            <Button onClick={() => setCreateTableDialog(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Create Your First Table
-            </Button>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="space-y-2">
-          {tables.map(table => {
+      {(() => {
+        // Separate system/default tables from user tables
+        const isPublicSchema = schemaName === 'public'
+        const defaultTablesList = isPublicSchema ? PUBLIC_SYSTEM_TABLES : TENANT_DEFAULT_TABLES
+        const systemTables = tables.filter(t => defaultTablesList.includes(t.table_name))
+        const userTables = tables.filter(t => !defaultTablesList.includes(t.table_name))
+
+        const renderTable = (table: SchemaTable) => {
             const isExpanded = expandedTables.has(table.table_name)
             const isLoading = loading === table.table_name
             const tableColumns = columns[table.table_name]
@@ -623,10 +719,10 @@ export function SchemaTableList({ tables: initialTables, schemaName }: SchemaTab
 
                 {/* Expanded Content */}
                 {isExpanded && tableColumns && (
-                  <div className="border-t bg-muted/20">
+                  <div className="border-t bg-muted/20 max-h-[500px] overflow-auto">
                     <div className="p-4">
-                      {/* Header with actions */}
-                      <div className="flex items-center justify-between mb-3">
+                      {/* Header with actions - sticky on scroll */}
+                      <div className="flex items-center justify-between mb-3 sticky top-0 bg-muted/95 backdrop-blur-sm -mx-4 px-4 py-2 -mt-4 z-10 border-b">
                         <h4 className="text-sm font-medium flex items-center gap-2">
                           <Columns3 className="h-4 w-4" />
                           Columns
@@ -640,17 +736,34 @@ export function SchemaTableList({ tables: initialTables, schemaName }: SchemaTab
                               {tableRowCount.toLocaleString()} rows
                             </Badge>
                           )}
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              setAddColumnDialog({ open: true, table: table.table_name })
-                            }}
-                          >
-                            <Plus className="h-3.5 w-3.5 mr-1" />
-                            Add Column
-                          </Button>
+                          {canWrite && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setAddColumnDialog({ open: true, table: table.table_name })
+                              }}
+                            >
+                              <Plus className="h-3.5 w-3.5 mr-1" />
+                              Add Column
+                            </Button>
+                          )}
+                          {canWrite && !(schemaName === 'public' ? PUBLIC_SYSTEM_TABLES.includes(table.table_name) : TENANT_DEFAULT_TABLES.includes(table.table_name)) && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setDeleteTableDialog({ open: true, table: table.table_name, hasDependencies: false, dependencyError: null })
+                                setForceCascade(false)
+                              }}
+                            >
+                              <Trash2 className="h-3.5 w-3.5 mr-1" />
+                              Delete Table
+                            </Button>
+                          )}
                         </div>
                       </div>
 
@@ -727,7 +840,7 @@ export function SchemaTableList({ tables: initialTables, schemaName }: SchemaTab
                                     )}
                                   </TableCell>
                                   <TableCell>
-                                    {!fk && !col.is_primary_key && (
+                                    {canWrite && !fk && !col.is_primary_key && (
                                       <Button
                                         variant="ghost"
                                         size="sm"
@@ -775,14 +888,16 @@ export function SchemaTableList({ tables: initialTables, schemaName }: SchemaTab
                                 <span className="text-xs text-muted-foreground ml-auto">
                                   ON DELETE {fk.on_delete}
                                 </span>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                                  onClick={() => handleDropForeignKey(table.table_name, fk.constraint_name)}
-                                >
-                                  <X className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive" />
-                                </Button>
+                                {canWrite && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                    onClick={() => handleDropForeignKey(table.table_name, fk.constraint_name)}
+                                  >
+                                    <X className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive" />
+                                  </Button>
+                                )}
                               </div>
                             ))}
                           </div>
@@ -793,9 +908,72 @@ export function SchemaTableList({ tables: initialTables, schemaName }: SchemaTab
                 )}
               </div>
             )
-          })}
-        </div>
-      )}
+          }
+
+        if (tables.length === 0) {
+          return (
+            <Card>
+              <CardContent className="py-12 text-center">
+                <Table2 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <p className="text-muted-foreground mb-4">No tables found in this schema.</p>
+                {canWrite && (
+                  <Button onClick={() => setCreateTableDialog(true)}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create Your First Table
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          )
+        }
+
+        return (
+          <div className="space-y-6">
+            {/* Default/System Tables Section */}
+            {systemTables.length > 0 && (
+              <div className="space-y-2">
+                <h3 className="text-sm font-medium text-muted-foreground mb-3 flex items-center gap-2">
+                  <Key className="h-4 w-4" />
+                  {isPublicSchema ? 'System Tables' : 'Default Tables'} ({systemTables.length})
+                </h3>
+                <p className="text-xs text-muted-foreground mb-3">
+                  {isPublicSchema 
+                    ? 'Protected tables required for application functionality'
+                    : 'Default tables created with every schema'
+                  }
+                </p>
+                {systemTables.map(renderTable)}
+              </div>
+            )}
+
+            {/* User Tables Section */}
+            {userTables.length > 0 && (
+              <div className="space-y-2">
+                {systemTables.length > 0 && (
+                  <h3 className="text-sm font-medium text-muted-foreground mb-3">
+                    User Tables ({userTables.length})
+                  </h3>
+                )}
+                {userTables.map(renderTable)}
+              </div>
+            )}
+
+            {/* Empty user tables message */}
+            {userTables.length === 0 && systemTables.length > 0 && canWrite && (
+              <Card>
+                <CardContent className="py-8 text-center">
+                  <Table2 className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+                  <p className="text-muted-foreground mb-3">No user tables yet.</p>
+                  <Button onClick={() => setCreateTableDialog(true)} size="sm">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create Your First Table
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        )
+      })()}
 
       {/* Add Column Dialog */}
       <Dialog open={addColumnDialog.open} onOpenChange={(open) => setAddColumnDialog({ open, table: addColumnDialog.table })}>
@@ -813,12 +991,16 @@ export function SchemaTableList({ tables: initialTables, schemaName }: SchemaTab
                 id="columnName"
                 placeholder="column_name"
                 value={newColumn.name}
-                onChange={(e) => setNewColumn({ ...newColumn, name: e.target.value })}
-                className="font-mono"
+                onChange={(e) => setNewColumn({ ...newColumn, name: sanitizeName(e.target.value) })}
+                className={`font-mono ${newColumn.name && validateName(newColumn.name, 'column') ? 'border-destructive' : ''}`}
               />
-              <p className="text-xs text-muted-foreground">
-                Lowercase with letters, numbers, underscores
-              </p>
+              {newColumn.name && validateName(newColumn.name, 'column') ? (
+                <p className="text-xs text-destructive">{validateName(newColumn.name, 'column')}</p>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  Lowercase with letters, numbers, underscores
+                </p>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="columnType">Data Type</Label>
@@ -864,7 +1046,7 @@ export function SchemaTableList({ tables: initialTables, schemaName }: SchemaTab
             <Button variant="outline" onClick={() => setAddColumnDialog({ open: false, table: null })}>
               Cancel
             </Button>
-            <Button onClick={handleAddColumn} disabled={isAdding || !newColumn.name}>
+            <Button onClick={handleAddColumn} disabled={isAdding || !newColumn.name || !!validateName(newColumn.name, 'column')}>
               {isAdding ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -898,18 +1080,22 @@ export function SchemaTableList({ tables: initialTables, schemaName }: SchemaTab
                 id="tableName"
                 placeholder="my_table"
                 value={newTableName}
-                onChange={(e) => setNewTableName(e.target.value)}
-                className="font-mono"
+                onChange={(e) => setNewTableName(sanitizeName(e.target.value))}
+                className={`font-mono ${validateName(newTableName, 'table') ? 'border-destructive' : ''}`}
               />
-              <p className="text-xs text-muted-foreground">
-                Lowercase with letters, numbers, underscores
-              </p>
+              {validateName(newTableName, 'table') ? (
+                <p className="text-xs text-destructive">{validateName(newTableName, 'table')}</p>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  Lowercase with letters, numbers, underscores
+                </p>
+              )}
             </div>
 
             {/* Columns */}
             <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <Label>Columns</Label>
+              <div className="flex items-center justify-between sticky top-[-25] bg-background py-3 -mx-6 px-6 -mt-4 z-10 border-b">
+                <Label className="text-base font-medium">Columns</Label>
                 <Button type="button" variant="outline" size="sm" onClick={addNewColumnRow}>
                   <Plus className="h-3.5 w-3.5 mr-1" />
                   Add Column
@@ -939,9 +1125,12 @@ export function SchemaTableList({ tables: initialTables, schemaName }: SchemaTab
                         <Input
                           placeholder="column_name"
                           value={col.name}
-                          onChange={(e) => updateColumnRow(col.id, { name: e.target.value })}
-                          className="font-mono"
+                          onChange={(e) => updateColumnRow(col.id, { name: sanitizeName(e.target.value) })}
+                          className={`font-mono ${col.name && validateName(col.name, 'column') ? 'border-destructive' : ''}`}
                         />
+                        {col.name && validateName(col.name, 'column') && (
+                          <p className="text-xs text-destructive">{validateName(col.name, 'column')}</p>
+                        )}
                       </div>
                       
                       <div className="space-y-1.5">
@@ -949,8 +1138,9 @@ export function SchemaTableList({ tables: initialTables, schemaName }: SchemaTab
                         <Select 
                           value={col.type} 
                           onValueChange={(value) => updateColumnRow(col.id, { type: value })}
+                          disabled={!!col.fk_table}
                         >
-                          <SelectTrigger>
+                          <SelectTrigger className={col.fk_table ? 'opacity-70' : ''}>
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -961,6 +1151,11 @@ export function SchemaTableList({ tables: initialTables, schemaName }: SchemaTab
                             ))}
                           </SelectContent>
                         </Select>
+                        {col.fk_table && (
+                          <p className="text-xs text-muted-foreground">
+                            Auto-set to match FK reference
+                          </p>
+                        )}
                       </div>
                     </div>
 
@@ -986,7 +1181,7 @@ export function SchemaTableList({ tables: initialTables, schemaName }: SchemaTab
                           <span className="text-sm text-muted-foreground">FK:</span>
                           <Select 
                             value={col.fk_schema && col.fk_table ? `${col.fk_schema}.${col.fk_table}` : 'none'} 
-                            onValueChange={(value) => {
+                            onValueChange={async (value) => {
                               if (value === 'none') {
                                 updateColumnRow(col.id, { 
                                   fk_schema: undefined, 
@@ -997,11 +1192,22 @@ export function SchemaTableList({ tables: initialTables, schemaName }: SchemaTab
                               } else {
                                 const refTable = referenceTables.find(t => `${t.schema_name}.${t.table_name}` === value)
                                 if (refTable) {
+                                  // Fetch PK column info to get the correct type
+                                  const supabase = createClient()
+                                  const { data: pkColumns } = await supabase.rpc('get_table_pk_columns', {
+                                    target_schema: refTable.schema_name,
+                                    target_table: refTable.table_name,
+                                  })
+                                  
+                                  const pkColumn = pkColumns?.[0]
+                                  const pkType = pkColumn?.data_type || 'uuid'
+                                  
                                   updateColumnRow(col.id, { 
                                     fk_schema: refTable.schema_name, 
                                     fk_table: refTable.table_name,
-                                    fk_column: 'id',
-                                    fk_on_delete: 'CASCADE'
+                                    fk_column: pkColumn?.column_name || 'id',
+                                    fk_on_delete: 'CASCADE',
+                                    type: pkType, // Auto-set type to match referenced column
                                   })
                                 }
                               }
@@ -1034,7 +1240,15 @@ export function SchemaTableList({ tables: initialTables, schemaName }: SchemaTab
             <Button variant="outline" onClick={() => setCreateTableDialog(false)}>
               Cancel
             </Button>
-            <Button onClick={handleCreateTable} disabled={isCreatingTable || !newTableName}>
+            <Button 
+              onClick={handleCreateTable} 
+              disabled={
+                isCreatingTable || 
+                !newTableName || 
+                !!validateName(newTableName, 'table') ||
+                newTableColumns.some(col => !col.name || !!validateName(col.name, 'column'))
+              }
+            >
               {isCreatingTable ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -1202,6 +1416,68 @@ export function SchemaTableList({ tables: initialTables, schemaName }: SchemaTab
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Table Confirmation Dialog */}
+      <AlertDialog 
+        open={deleteTableDialog.open} 
+        onOpenChange={(open) => {
+          setDeleteTableDialog({ open, table: deleteTableDialog.table, hasDependencies: false, dependencyError: null })
+          if (!open) setForceCascade(false)
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Table</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                <p>
+                  Are you sure you want to delete the table{' '}
+                  <span className="font-mono font-semibold text-foreground">{deleteTableDialog.table}</span>?
+                  This action cannot be undone. All data in this table will be permanently deleted.
+                </p>
+                
+                {deleteTableDialog.hasDependencies && (
+                  <div className="p-3 rounded-md bg-destructive/10 border border-destructive/20">
+                    <p className="text-destructive font-medium text-sm mb-2">⚠️ This table has dependencies</p>
+                    <p className="text-sm text-muted-foreground">
+                      {deleteTableDialog.dependencyError}
+                    </p>
+                    <div className="flex items-center gap-2 mt-3">
+                      <Checkbox 
+                        id="force-cascade" 
+                        checked={forceCascade}
+                        onCheckedChange={(checked) => setForceCascade(checked === true)}
+                      />
+                      <Label htmlFor="force-cascade" className="text-sm font-normal cursor-pointer">
+                        I understand, delete this table and remove all foreign key references
+                      </Label>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeletingTable}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => handleDropTable()}
+              disabled={isDeletingTable || (deleteTableDialog.hasDependencies && !forceCascade)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeletingTable ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : deleteTableDialog.hasDependencies ? (
+                'Force Delete'
+              ) : (
+                'Delete Permanently'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   )
 }

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { TenantWithProducts, TenantStatus } from '@/types/database'
 import {
@@ -44,6 +44,9 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 
+// Protected system schemas that cannot be deleted
+const PROTECTED_SCHEMAS = ['public', 'auth', 'storage', 'graphql', 'realtime', 'supabase_functions', 'extensions']
+
 interface TenantTableProps {
   initialTenants: TenantWithProducts[]
 }
@@ -53,6 +56,11 @@ export function TenantTable({ initialTenants }: TenantTableProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<TenantStatus | 'all'>('all')
   const [isLoading, setIsLoading] = useState<string | null>(null)
+  
+  // Sync state with props when initialTenants changes (after router.refresh())
+  useEffect(() => {
+    setTenants(initialTenants)
+  }, [initialTenants])
   
   // Delete confirmation dialog state
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; schema: string | null }>({
@@ -66,6 +74,10 @@ export function TenantTable({ initialTenants }: TenantTableProps) {
     const matchesStatus = statusFilter === 'all' || tenant.status === statusFilter
     return matchesSearch && matchesStatus
   })
+
+  // Separate user schemas from system schemas
+  const userSchemas = filteredTenants.filter(t => !PROTECTED_SCHEMAS.includes(t.schema_name))
+  const systemSchemas = filteredTenants.filter(t => PROTECTED_SCHEMAS.includes(t.schema_name))
 
   // Handle suspend/activate
   const handleStatusChange = async (schema: string, action: 'suspend' | 'activate') => {
@@ -167,115 +179,231 @@ export function TenantTable({ initialTenants }: TenantTableProps) {
         </DropdownMenu>
       </div>
 
-      {/* Table */}
-      <div className="rounded-lg border bg-card">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Schema Name</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="hidden md:table-cell">Created</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredTenants.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
-                  {searchQuery || statusFilter !== 'all'
-                    ? 'No schemas match your filters.'
-                    : 'No schemas found. Create your first schema above.'}
-                </TableCell>
-              </TableRow>
-            ) : (
-              filteredTenants.map(tenant => (
-                <TableRow key={tenant.id} className={isLoading === tenant.schema_name ? 'opacity-50' : ''}>
-                  <TableCell className="font-medium">
-                    <Link 
-                      href={`/tenants/${tenant.schema_name}`}
-                      className="flex items-center gap-2 hover:text-primary transition-colors group"
-                    >
-                      <Database className="h-4 w-4 text-muted-foreground group-hover:text-primary" />
-                      <span className="font-mono text-sm">{tenant.schema_name}</span>
-                      <ExternalLink className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
-                    </Link>
-                    {tenant.display_name && tenant.display_name !== tenant.schema_name && (
-                      <p className="text-xs text-muted-foreground mt-0.5 ml-6">
-                        {tenant.display_name}
-                      </p>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={tenant.status === 'active' ? 'default' : 'secondary'}>
-                      {tenant.status === 'active' ? (
-                        <span className="flex items-center gap-1">
-                          <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
-                          Active
-                        </span>
-                      ) : (
-                        <span className="flex items-center gap-1">
-                          <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-                          Suspended
-                        </span>
-                      )}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="hidden md:table-cell text-muted-foreground">
-                    {formatDate(tenant.created_at)}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          disabled={isLoading === tenant.schema_name}
-                        >
-                          <MoreHorizontal className="h-4 w-4" />
-                          <span className="sr-only">Open menu</span>
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem asChild>
-                          <Link href={`/tenants/${tenant.schema_name}`}>
-                            <Database className="mr-2 h-4 w-4" />
-                            View Tables
+      {/* Tables */}
+      {filteredTenants.length === 0 ? (
+        <div className="rounded-lg border bg-card p-12 text-center text-muted-foreground">
+          {searchQuery || statusFilter !== 'all'
+            ? 'No schemas match your filters.'
+            : 'No schemas found. Create your first schema above.'}
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {/* User Schemas */}
+          {userSchemas.length > 0 && (
+            <div>
+              {systemSchemas.length > 0 && (
+                <h3 className="text-sm font-medium text-muted-foreground mb-3">
+                  User Schemas ({userSchemas.length})
+                </h3>
+              )}
+              <div className="rounded-lg border bg-card">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Schema Name</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="hidden md:table-cell">Created</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {userSchemas.map(tenant => (
+                      <TableRow key={tenant.id} className={isLoading === tenant.schema_name ? 'opacity-50' : ''}>
+                        <TableCell className="font-medium">
+                          <Link 
+                            href={`/tenants/${tenant.schema_name}`}
+                            className="flex items-center gap-2 hover:text-primary transition-colors group"
+                          >
+                            <Database className="h-4 w-4 text-muted-foreground group-hover:text-primary" />
+                            <span className="font-mono text-sm">{tenant.schema_name}</span>
+                            <ExternalLink className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
                           </Link>
-                        </DropdownMenuItem>
-                        {tenant.status === 'active' ? (
-                          <DropdownMenuItem
-                            onClick={() => handleStatusChange(tenant.schema_name, 'suspend')}
+                          {tenant.display_name && tenant.display_name !== tenant.schema_name && (
+                            <p className="text-xs text-muted-foreground mt-0.5 ml-6">
+                              {tenant.display_name}
+                            </p>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={tenant.status === 'active' ? 'default' : 'secondary'}>
+                            {tenant.status === 'active' ? (
+                              <span className="flex items-center gap-1">
+                                <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
+                                Active
+                              </span>
+                            ) : (
+                              <span className="flex items-center gap-1">
+                                <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                                Suspended
+                              </span>
+                            )}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell text-muted-foreground">
+                          {formatDate(tenant.created_at)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                disabled={isLoading === tenant.schema_name}
+                              >
+                                <MoreHorizontal className="h-4 w-4" />
+                                <span className="sr-only">Open menu</span>
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem asChild>
+                                <Link href={`/tenants/${tenant.schema_name}`}>
+                                  <Database className="mr-2 h-4 w-4" />
+                                  View Tables
+                                </Link>
+                              </DropdownMenuItem>
+                              {tenant.status === 'active' ? (
+                                <DropdownMenuItem
+                                  onClick={() => handleStatusChange(tenant.schema_name, 'suspend')}
+                                >
+                                  <PowerOff className="mr-2 h-4 w-4" />
+                                  Suspend Access
+                                </DropdownMenuItem>
+                              ) : (
+                                <DropdownMenuItem
+                                  onClick={() => handleStatusChange(tenant.schema_name, 'activate')}
+                                >
+                                  <Power className="mr-2 h-4 w-4" />
+                                  Reactivate Access
+                                </DropdownMenuItem>
+                              )}
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                className="text-destructive focus:text-destructive"
+                                onClick={() => setDeleteDialog({ open: true, schema: tenant.schema_name })}
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete Schema
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+          )}
+
+          {/* System Schemas */}
+          {systemSchemas.length > 0 && (
+            <div>
+              <h3 className="text-sm font-medium text-muted-foreground mb-3 flex items-center gap-2">
+                <Database className="h-4 w-4" />
+                System Schemas ({systemSchemas.length})
+              </h3>
+              <p className="text-xs text-muted-foreground mb-3">
+                Protected schemas required for application functionality
+              </p>
+              <div className="rounded-lg border bg-card">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Schema Name</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="hidden md:table-cell">Created</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {systemSchemas.map(tenant => (
+                      <TableRow key={tenant.id} className={isLoading === tenant.schema_name ? 'opacity-50' : ''}>
+                        <TableCell className="font-medium">
+                          <Link 
+                            href={`/tenants/${tenant.schema_name}`}
+                            className="flex items-center gap-2 hover:text-primary transition-colors group"
                           >
-                            <PowerOff className="mr-2 h-4 w-4" />
-                            Suspend Access
-                          </DropdownMenuItem>
-                        ) : (
-                          <DropdownMenuItem
-                            onClick={() => handleStatusChange(tenant.schema_name, 'activate')}
-                          >
-                            <Power className="mr-2 h-4 w-4" />
-                            Reactivate Access
-                          </DropdownMenuItem>
-                        )}
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          className="text-destructive focus:text-destructive"
-                          onClick={() => setDeleteDialog({ open: true, schema: tenant.schema_name })}
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Delete Schema
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+                            <Database className="h-4 w-4 text-muted-foreground group-hover:text-primary" />
+                            <span className="font-mono text-sm">{tenant.schema_name}</span>
+                            <Badge variant="outline" className="text-xs py-0 px-1.5">
+                              System
+                            </Badge>
+                            <ExternalLink className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                          </Link>
+                          {tenant.display_name && tenant.display_name !== tenant.schema_name && (
+                            <p className="text-xs text-muted-foreground mt-0.5 ml-6">
+                              {tenant.display_name}
+                            </p>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={tenant.status === 'active' ? 'default' : 'secondary'}>
+                            {tenant.status === 'active' ? (
+                              <span className="flex items-center gap-1">
+                                <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
+                                Active
+                              </span>
+                            ) : (
+                              <span className="flex items-center gap-1">
+                                <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                                Suspended
+                              </span>
+                            )}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell text-muted-foreground">
+                          {formatDate(tenant.created_at)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                disabled={isLoading === tenant.schema_name}
+                              >
+                                <MoreHorizontal className="h-4 w-4" />
+                                <span className="sr-only">Open menu</span>
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem asChild>
+                                <Link href={`/tenants/${tenant.schema_name}`}>
+                                  <Database className="mr-2 h-4 w-4" />
+                                  View Tables
+                                </Link>
+                              </DropdownMenuItem>
+                              {tenant.status === 'active' ? (
+                                <DropdownMenuItem
+                                  onClick={() => handleStatusChange(tenant.schema_name, 'suspend')}
+                                >
+                                  <PowerOff className="mr-2 h-4 w-4" />
+                                  Suspend Access
+                                </DropdownMenuItem>
+                              ) : (
+                                <DropdownMenuItem
+                                  onClick={() => handleStatusChange(tenant.schema_name, 'activate')}
+                                >
+                                  <Power className="mr-2 h-4 w-4" />
+                                  Reactivate Access
+                                </DropdownMenuItem>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={deleteDialog.open} onOpenChange={open => setDeleteDialog({ open, schema: deleteDialog.schema })}>

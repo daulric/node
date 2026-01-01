@@ -21,6 +21,7 @@ interface UserInfo {
   isAdmin: boolean
   isSuperAdmin: boolean
   role: string | null
+  userId: string
 }
 
 interface SchemaTable {
@@ -59,7 +60,21 @@ async function getUser(): Promise<UserInfo | null> {
     isAdmin,
     isSuperAdmin,
     role: adminUser?.role || null,
+    userId: user.id,
   }
+}
+
+async function getUserSchemaAccess(userId: string, schemaName: string): Promise<string> {
+  const supabase = await createClient()
+  
+  const { data } = await supabase
+    .from('user_schema_access')
+    .select('access_level')
+    .eq('user_id', userId)
+    .eq('tenant_schema', schemaName)
+    .single()
+
+  return data?.access_level || 'none'
 }
 
 async function getTenantInfo(schemaName: string): Promise<TenantInfo | null> {
@@ -113,6 +128,13 @@ export default async function SchemaDetailPage({ params }: PageProps) {
   }
 
   const tables = await getSchemaTables(schema)
+  
+  // Get user's access level for this schema
+  // Admins have full access, otherwise check user_schema_access
+  const accessLevel = user.isAdmin ? 'admin' : await getUserSchemaAccess(user.userId, schema)
+  
+  // Check if user can write (write or admin access)
+  const canWrite = accessLevel === 'write' || accessLevel === 'admin'
 
   // Calculate total size
   const totalSize = tables.reduce((acc, t) => {
@@ -242,7 +264,7 @@ export default async function SchemaDetailPage({ params }: PageProps) {
           </div>
           
           {user.isAdmin || tables.length > 0 ? (
-            <SchemaTableList tables={tables} schemaName={schema} />
+            <SchemaTableList tables={tables} schemaName={schema} canWrite={canWrite} />
           ) : (
             <Card>
               <CardContent className="py-8 text-center">
