@@ -26,9 +26,9 @@ jobs:
         run: |
           echo "## 📊 Lines of Code Report" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
           tokei --sort code >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
           
           # Get total for badge
           TOTAL=$(tokei --output json | jq '.Total.code')
