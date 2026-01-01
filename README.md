@@ -1,36 +1,134 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Multi-Tenant SaaS Platform
 
-## Getting Started
+A production-ready multi-tenant architecture using **schema-per-tenant isolation** built with Next.js, Supabase, and Bun.
 
-First, run the development server:
+## ✨ Features
+
+- **Schema-per-tenant isolation** — Each tenant gets their own PostgreSQL schema
+- **Role-based access control** — Super admin, admin, and viewer roles
+- **User access management** — Grant/revoke schema access per user
+- **Tenant lifecycle** — Create, suspend, activate, and delete tenants
+- **Schema inspection** — Introspect tables, columns, and foreign keys
+- **Audit logging** — Track all admin and tenant-level actions
+- **Modern stack** — Next.js 16, React 19, Tailwind CSS, Radix UI
+
+## 🚀 Quick Start
+
+### Prerequisites
+
+- [Bun](https://bun.sh/) (recommended) or Node.js 18+
+- [Supabase](https://supabase.com/) project (cloud or self-hosted)
+
+### 1. Clone & Install
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone <your-repo-url>
+cd node
+bun install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. Set Up Environment
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Create `.env.local`:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+```
 
-## Learn More
+### 3. Initialize Database
 
-To learn more about Next.js, take a look at the following resources:
+Run the SQL scripts in order via Supabase SQL Editor:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```
+supabase/sql/01_tables.sql
+supabase/sql/02_rls_policies.sql
+supabase/sql/03_helper_functions.sql
+supabase/sql/04_schema_management.sql
+supabase/sql/05_access_control.sql
+supabase/sql/06_schema_inspection.sql
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### 4. Create First Admin
 
-## Deploy on Vercel
+After signing up, promote yourself to super admin:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```sql
+INSERT INTO public.admin_users (user_id, role)
+VALUES ('your-auth-user-uuid', 'super_admin');
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### 5. Run Development Server
+
+```bash
+bun run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000)
+
+## 📁 Project Structure
+
+```
+├── app/
+│   ├── api/tenants/        # API routes for tenant management
+│   ├── tenants/            # Admin dashboard pages
+│   ├── login/              # Authentication pages
+│   └── signup/
+├── components/ui/          # Radix UI components
+├── supabase/sql/           # Database setup scripts
+├── documentation/          # Detailed docs
+├── lib/                    # Utilities
+└── utils/supabase/         # Supabase client helpers
+```
+
+## 🏗️ Architecture
+
+| Approach | This System |
+|----------|-------------|
+| **Isolation** | Schema-per-tenant (strong isolation, easy backup) |
+| **Auth** | Supabase Auth (email, OAuth, magic links) |
+| **Authorization** | PostgreSQL GRANT/REVOKE + RLS policies |
+| **Suspension** | Revokes schema USAGE immediately |
+
+### Public Schema Tables
+
+| Table | Purpose |
+|-------|---------|
+| `tenants` | Registry of all tenant schemas |
+| `admin_users` | Platform administrators |
+| `user_schema_access` | User permissions per tenant |
+| `admin_audit_log` | Audit trail of admin actions |
+
+## 📖 Documentation
+
+See the [`documentation/`](./documentation/) folder for detailed guides:
+
+- [Overview](./documentation/01-overview.md) — Architecture and concepts
+- [Installation](./documentation/02-installation.md) — Setup guide
+- [Schema Management](./documentation/03-schema-management.md) — CRUD operations
+- [User Auth Integration](./documentation/04-user-auth-integration.md) — Auth flow
+- [Access Control](./documentation/05-access-control.md) — Permissions
+- [Schema Inspection](./documentation/06-schema-inspection.md) — Introspection
+- [API Reference](./documentation/07-api-reference.md) — RPC functions
+- [Client Examples](./documentation/08-client-examples.md) — Code samples
+
+## 🛠️ Scripts
+
+```bash
+bun run dev      # Start development server
+bun run build    # Build for production
+bun run start    # Start production server
+bun run lint     # Run ESLint
+```
+
+## 🔒 Security
+
+- **Row Level Security (RLS)** enabled on all public tables
+- **Schema-level isolation** via PostgreSQL GRANT/REVOKE
+- **Audit logging** for compliance and debugging
+- **Suspension** instantly revokes all access
+
+## 📄 License
+
+MIT
+
