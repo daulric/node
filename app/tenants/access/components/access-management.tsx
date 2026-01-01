@@ -58,7 +58,7 @@ interface SchemaAccess {
 interface AccessManagementProps {
   initialAccessList: SchemaAccess[]
   schemas: string[]
-  isSuperAdmin: boolean
+  isSuperAdmin?: boolean
 }
 
 const ACCESS_LEVELS = [
@@ -67,7 +67,7 @@ const ACCESS_LEVELS = [
   { value: 'admin', label: 'Admin', description: 'Full control including user management', icon: Shield },
 ]
 
-export function AccessManagement({ initialAccessList, schemas, isSuperAdmin }: AccessManagementProps) {
+export function AccessManagement({ initialAccessList, schemas }: AccessManagementProps) {
   const router = useRouter()
   const [accessList, setAccessList] = useState<SchemaAccess[]>(initialAccessList)
   const [isLoading, setIsLoading] = useState(false)

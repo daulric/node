@@ -143,7 +143,7 @@ const createEmptyColumn = (): NewColumnDef => ({
 
 export function SchemaTableList({ tables: initialTables, schemaName }: SchemaTableListProps) {
   const router = useRouter()
-  const [tables, setTables] = useState(initialTables)
+  const [tables] = useState(initialTables)
   const [expandedTables, setExpandedTables] = useState<Set<string>>(new Set())
   const [columns, setColumns] = useState<Record<string, TableColumn[]>>({})
   const [foreignKeys, setForeignKeys] = useState<Record<string, ForeignKey[]>>({})

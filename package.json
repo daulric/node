@@ -4,9 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "bun --bun next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint"
+    "build": "bun --bun next build",
+    "start": "bun --bun next start",
+    "lint": "bun --bun eslint"
   },
   "dependencies": {
     "@radix-ui/react-alert-dialog": "^1.1.15",
