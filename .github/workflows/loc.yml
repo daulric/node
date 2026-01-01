@@ -24,18 +24,25 @@ jobs:
       - name: Count lines of code
         id: loc
         run: |
-          echo "## 📊 Lines of Code Report" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          tokei --sort code >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
+          # Run tokei and capture output
+          echo "Running tokei..."
+          tokei --sort code
           
           # Get total for badge
           TOTAL=$(tokei --output json | jq '.Total.code')
+          echo "Total lines: $TOTAL"
           echo "total=$TOTAL" >> $GITHUB_OUTPUT
           
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Total lines of code:** $TOTAL" >> $GITHUB_STEP_SUMMARY
+          # Write to summary
+          {
+            echo "## 📊 Lines of Code Report"
+            echo ""
+            echo '```'
+            tokei --sort code
+            echo '```'
+            echo ""
+            echo "**Total lines of code:** $TOTAL"
+          } >> $GITHUB_STEP_SUMMARY
 
       - name: Breakdown by directory
         run: |
