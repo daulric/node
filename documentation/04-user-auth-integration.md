@@ -100,6 +100,48 @@ supabase.auth.onAuthStateChange(async (event, session) => {
 
 ---
 
+## Tenant Client Auth UX (Recommended)
+
+In a multi-tenant system, users often **don’t know** whether they already have a Supabase Auth account (especially with OAuth, prior invites, or password resets). The tenant-facing client should avoid forcing users to choose between “login” and “signup”.
+
+### Use a Single Email Entry Point
+
+Prefer a single **"Continue with email"** flow using **Supabase OTP** (`signInWithOtp`) that works for both new and existing users:
+
+- User enters email
+- Show a generic message like: **“If an account exists, we sent you a link.”**
+- User completes sign-in from their inbox
+
+This avoids confusing "already registered" errors and reduces account duplication attempts.
+
+### Use Supabase OTP Only (Tenant Clients)
+
+For tenant-facing clients, **use only Supabase OTP** (email magic link / one-time code via `signInWithOtp`). Avoid password-based signup/signin UIs in tenant clients, because they:
+
+- Increase user confusion (“Do I have an account already?”)
+- Encourage duplicate signup attempts
+- Create additional recovery surface area (password resets, credential stuffing, etc.)
+
+### Avoid Email Enumeration
+
+Do not reveal whether an email is registered. Always return the same UI message for:
+
+- Existing accounts
+- New accounts
+- Disabled/unapproved accounts
+
+### After Auth: Determine Tenant Membership
+
+After the user authenticates, determine where they belong using schema access, not by trying to “find tenants by email”.
+
+- Membership is represented by `public.user_schema_access` (rows for the current `auth.users.id`)
+- Behavior:
+  - If the user has **one** accessible tenant: redirect into it
+  - If they have **multiple**: show a tenant picker
+  - If they have **none**: show “Access Required” / “Request access” instructions
+
+---
+
 ## Multi-Tenant Membership
 
 The same Supabase Auth user can belong to **multiple tenants** with different roles:

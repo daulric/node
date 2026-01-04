@@ -62,40 +62,34 @@ supabase.auth.onAuthStateChange(async (event, session) => {
 })
 ```
 
-### Sign Up
+### Recommended Tenant Client Login UX (Single Email Entry Point)
+
+In multi-tenant apps, users often don’t know whether they already have an account. For tenant-facing clients, use **Supabase OTP only** (`signInWithOtp`) and avoid exposing whether an email is registered.
 
 ```typescript
-async function signUp(email: string, password: string, name: string) {
-  const { data, error } = await supabase.auth.signUp({
+async function continueWithEmail(email: string) {
+  const { error } = await supabase.auth.signInWithOtp({
     email,
-    password,
     options: {
-      data: { full_name: name }  // Stored in user_metadata
-    }
+      // Where the user should land after clicking the email link
+      emailRedirectTo: `${window.location.origin}/auth/callback?redirectTo=/tenants`,
+    },
   })
 
+  // Always show the same UI message (avoid email enumeration):
+  // "If an account exists, we sent you a link."
   if (error) throw error
-
-  // Profile is automatically created in onAuthStateChange
-  return data
 }
 ```
 
-### Sign In
+After the user authenticates, use your normal post-auth flow:
 
-```typescript
-async function signIn(email: string, password: string) {
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email,
-    password
-  })
+- Call `ensure_user_profile` for the current tenant when operating inside a tenant context
+- Route the user based on their tenant access (e.g. one tenant → redirect, multiple → picker, none → access required)
 
-  if (error) throw error
+### Password Login (Not Recommended for Tenant Clients)
 
-  // Profile is automatically ensured in onAuthStateChange
-  return data
-}
-```
+If you are building an internal/admin tool you may choose password auth, but tenant-facing clients should stick to **Supabase OTP** to reduce account confusion and avoid duplicate signup attempts.
 
 ### Sign Out
 
