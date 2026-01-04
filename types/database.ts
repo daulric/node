@@ -159,6 +159,38 @@ export type Database = {
           }
         ]
       }
+      tenant_buckets: {
+        Row: {
+          id: string
+          tenant_schema: string
+          bucket_id: string
+          created_by: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          tenant_schema: string
+          bucket_id: string
+          created_by?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          tenant_schema?: string
+          bucket_id?: string
+          created_by?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_buckets_tenant_schema_fkey"
+            columns: ["tenant_schema"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["schema_name"]
+          }
+        ]
+      }
       user_schema_access: {
         Row: {
           id: string

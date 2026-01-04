@@ -1,4 +1,5 @@
 import { createClient } from '@/utils/supabase/server'
+import { createAdminClient, createBucketIfMissing } from '@/utils/supabase/admin'
 import { NextRequest, NextResponse } from 'next/server'
 import { TenantStatus } from '@/types/database'
 
@@ -58,6 +59,38 @@ export async function POST(request: NextRequest) {
       console.error('RPC error:', rpcError)
       return NextResponse.json(
         { error: rpcError.message || 'Failed to create schema.' },
+        { status: 500 }
+      )
+    }
+
+    // Create a private Storage bucket (id = schema name) and link it to the schema.
+    // This must be done server-side with the service role key.
+    try {
+      await createBucketIfMissing(schemaName, false)
+
+      const supabaseAdmin = createAdminClient()
+
+      const { error: linkError } = await supabaseAdmin
+        .from('tenant_buckets')
+        .upsert(
+          {
+            tenant_schema: schemaName,
+            bucket_id: schemaName,
+          },
+          { onConflict: 'tenant_schema,bucket_id' }
+        )
+
+      if (linkError) {
+        console.error('Bucket link error:', linkError)
+        return NextResponse.json(
+          { error: 'Schema created, but failed to link the Storage bucket.' },
+          { status: 500 }
+        )
+      }
+    } catch (bucketError) {
+      console.error('Bucket setup error:', bucketError)
+      return NextResponse.json(
+        { error: 'Schema created, but failed to create/link the Storage bucket.' },
         { status: 500 }
       )
     }

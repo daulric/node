@@ -6,6 +6,7 @@ import { SchemaTableList } from './components/schema-table-list'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { SchemaBucketsPanel } from './components/schema-buckets-panel'
 import { 
   Database, 
   ArrowLeft, 
@@ -277,6 +278,11 @@ export default async function SchemaDetailPage({ params }: PageProps) {
               </CardContent>
             </Card>
           )}
+        </div>
+
+        {/* Storage Buckets */}
+        <div className="mt-8">
+          <SchemaBucketsPanel schemaName={schema} canManage={user.isAdmin} />
         </div>
       </div>
     </div>
