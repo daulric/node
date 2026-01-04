@@ -279,7 +279,7 @@ export default async function TenantsPage() {
                 <div className="p-2 rounded-lg bg-primary/10">
                   <Database className="h-5 w-5 text-primary" />
                 </div>
-                <span className="font-semibold">Node</span>
+                <span className="font-semibold">b12</span>
               </div>
               <UserNav user={user} />
             </div>
@@ -341,7 +341,7 @@ export default async function TenantsPage() {
                 <div className="p-2 rounded-lg bg-primary/10">
                   <Database className="h-5 w-5 text-primary" />
                 </div>
-                <span className="font-semibold">Node</span>
+                <span className="font-semibold">b12</span>
               </div>
               <UserNav user={user} />
             </div>
@@ -373,7 +373,7 @@ export default async function TenantsPage() {
               <div className="p-2 rounded-lg bg-primary/10">
                 <Database className="h-5 w-5 text-primary" />
               </div>
-              <span className="font-semibold">Node</span>
+                <span className="font-semibold">b12</span>
             </div>
             <UserNav user={user} />
           </div>
@@ -384,7 +384,7 @@ export default async function TenantsPage() {
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-2">
-            <h1 className="text-3xl font-bold tracking-tight">Node Management</h1>
+            <h1 className="text-3xl font-bold tracking-tight">b12 Management</h1>
               <Badge variant="secondary" className="gap-1">
                 <Shield className="h-3 w-3" />
                 {user.isSuperAdmin ? 'Super Admin' : 'Admin'}

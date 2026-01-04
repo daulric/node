@@ -1,4 +1,4 @@
-# Contributing to Nodey
+# Contributing to b12
 
 Thank you for your interest in contributing! This document provides guidelines and instructions for contributing to this project.
 
@@ -22,12 +22,12 @@ By participating in this project, you agree to maintain a respectful and inclusi
 1. **Fork the repository** on GitHub
 2. **Clone your fork** locally:
    ```bash
-   git clone https://github.com/YOUR_USERNAME/node.git
-   cd node
+   git clone https://github.com/YOUR_USERNAME/b12.git
+   cd b12
    ```
 3. **Add the upstream remote**:
    ```bash
-   git remote add upstream https://github.com/ORIGINAL_OWNER/node.git
+   git remote add upstream https://github.com/ORIGINAL_OWNER/b12.git
    ```
 
 ## Development Setup

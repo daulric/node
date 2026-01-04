@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Database, ArrowRight, Table2, Layers, Lock, Zap } from 'lucide-react'
+import { Database, ArrowRight, Table2, Layers, Lock, Zap, KeyRound, HardDrive } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 
@@ -84,7 +84,7 @@ export default function Home() {
           {/* Glowing Badge */}
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 backdrop-blur-md border border-emerald-500/30 mb-8 shadow-lg shadow-emerald-500/20">
             <Zap className="h-4 w-4 text-emerald-400 animate-pulse" />
-            <span className="text-sm font-medium text-emerald-300 tracking-wide uppercase">PostgreSQL Schema Manager</span>
+            <span className="text-sm font-medium text-emerald-300 tracking-wide uppercase">Tenant Manager</span>
           </div>
           
           {/* Main Title with Glow */}
@@ -94,14 +94,14 @@ export default function Home() {
             </span>
             <br />
             <span className="bg-gradient-to-r from-emerald-400 via-teal-400 to-cyan-400 bg-clip-text text-transparent">
-              Node System
+              b12
             </span>
           </h1>
           
           {/* Subtitle */}
           <p className="text-lg md:text-xl text-slate-400 max-w-2xl mx-auto mb-10 leading-relaxed">
             Create and manage isolated database nodes for your multi-tenant application. 
-            <span className="text-emerald-400"> View tables, columns, and control access</span> with precision.
+            <span className="text-emerald-400"> Inspect schemas, control access, manage storage, and onboard users with OTP + OAuth</span>.
           </p>
           
           {/* CTA Button with Glow */}
@@ -124,7 +124,7 @@ export default function Home() {
         </div>
 
         {/* Feature Cards */}
-        <div className="grid md:grid-cols-3 gap-6 mt-16">
+        <div className="grid md:grid-cols-2 lg:grid-cols-5 gap-6 mt-16">
           {/* Card 1 */}
           <Card className="group relative bg-black/40 border-emerald-500/20 backdrop-blur-xl hover:border-emerald-500/40 transition-all duration-500 hover:shadow-2xl hover:shadow-emerald-500/10 overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
@@ -214,6 +214,66 @@ export default function Home() {
               </ul>
             </CardContent>
           </Card>
+
+          {/* Card 4 */}
+          <Card className="group relative bg-black/40 border-violet-500/20 backdrop-blur-xl hover:border-violet-500/40 transition-all duration-500 hover:shadow-2xl hover:shadow-violet-500/10 overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-violet-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+            <CardHeader className="relative">
+              <div className="p-3 rounded-xl bg-violet-500/10 border border-violet-500/20 w-fit mb-3 group-hover:bg-violet-500/20 transition-colors">
+                <KeyRound className="h-6 w-6 text-violet-400" />
+              </div>
+              <CardTitle className="text-white text-xl font-bold">OTP + OAuth Auth</CardTitle>
+              <CardDescription className="text-slate-400">
+                Modern authentication that avoids password friction for tenant users.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="relative">
+              <ul className="text-sm text-slate-300 space-y-2">
+                <li className="flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-violet-500" />
+                  Supabase OTP (magic link / one-time code)
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-violet-500" />
+                  OAuth providers (Google, GitHub)
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-violet-500" />
+                  Reduced duplicate signup attempts
+                </li>
+              </ul>
+            </CardContent>
+          </Card>
+
+          {/* Card 5 */}
+          <Card className="group relative bg-black/40 border-amber-500/20 backdrop-blur-xl hover:border-amber-500/40 transition-all duration-500 hover:shadow-2xl hover:shadow-amber-500/10 overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-amber-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+            <CardHeader className="relative">
+              <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 w-fit mb-3 group-hover:bg-amber-500/20 transition-colors">
+                <HardDrive className="h-6 w-6 text-amber-400" />
+              </div>
+              <CardTitle className="text-white text-xl font-bold">Storage</CardTitle>
+              <CardDescription className="text-slate-400">
+                Organize files per tenant with buckets, folders, and signed URLs.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="relative">
+              <ul className="text-sm text-slate-300 space-y-2">
+                <li className="flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                  Create/list tenant buckets
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                  Upload + folder operations
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                  Signed URLs for secure access
+                </li>
+              </ul>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Tech Stack */}
@@ -279,6 +339,17 @@ export default function Home() {
           <div className="h-px w-full bg-gradient-to-r from-transparent via-emerald-500/20 to-transparent mb-8" />
           <p className="text-slate-600 text-sm">
             Built for the future of multi-tenant architecture
+          </p>
+          <p className="mt-2 text-slate-600 text-sm">
+            Built By{' '}
+            <a
+              href="https://daulric.dev"
+              target="_blank"
+              rel="noreferrer"
+              className="text-emerald-400 hover:text-emerald-300 transition-colors"
+            >
+              daulric
+            </a>
           </p>
         </div>
       </div>

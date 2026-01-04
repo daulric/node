@@ -174,7 +174,7 @@ export default async function SchemaDetailPage({ params }: PageProps) {
               <div className="p-2 rounded-lg bg-primary/10">
                 <Database className="h-5 w-5 text-primary" />
               </div>
-              <span className="font-semibold">Node Manager</span>
+              <span className="font-semibold">b12 Manager</span>
             </div>
             <UserNav user={user} />
           </div>

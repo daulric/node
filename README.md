@@ -1,4 +1,4 @@
-# Nodey - Multi-Tenant SaaS Platform
+# b12 - Multi-Tenant SaaS Platform
 
 A production-ready multi-tenant architecture using **schema-per-tenant isolation** built with Next.js, Supabase, and Bun.
 
@@ -23,7 +23,7 @@ A production-ready multi-tenant architecture using **schema-per-tenant isolation
 
 ```bash
 git clone <your-repo-url>
-cd node
+cd b12
 bun install
 ```
 

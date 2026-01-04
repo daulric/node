@@ -122,7 +122,7 @@ function LoginForm() {
         <div className="mx-auto mb-4">
           <Image
             src="/logo.png"
-            alt="Node Logo"
+            alt="b12 Logo"
             width={64}
             height={64}
             className="rounded-xl"
@@ -131,7 +131,7 @@ function LoginForm() {
         </div>
         <CardTitle className="text-2xl text-white">Welcome Back</CardTitle>
         <CardDescription className="text-slate-400">
-          Sign in to access the Node dashboard
+          Sign in to access the b12 dashboard
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
