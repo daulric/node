@@ -64,7 +64,7 @@ supabase.auth.onAuthStateChange(async (event, session) => {
 
 ### Recommended Tenant Client Login UX (Single Email Entry Point)
 
-In multi-tenant apps, users often don’t know whether they already have an account. For tenant-facing clients, use **Supabase OTP only** (`signInWithOtp`) and avoid exposing whether an email is registered.
+In multi-tenant apps, users often don’t know whether they already have an account. For tenant-facing clients, prefer **Supabase OTP** (`signInWithOtp`) and/or **OAuth** (`signInWithOAuth`) and avoid exposing whether an email is registered.
 
 ```typescript
 async function continueWithEmail(email: string) {
@@ -78,6 +78,19 @@ async function continueWithEmail(email: string) {
 
   // Always show the same UI message (avoid email enumeration):
   // "If an account exists, we sent you a link."
+  if (error) throw error
+}
+```
+
+```typescript
+async function continueWithOAuth(provider: 'google' | 'github') {
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider,
+    options: {
+      redirectTo: `${window.location.origin}/auth/callback?redirectTo=/tenants`,
+    },
+  })
+
   if (error) throw error
 }
 ```

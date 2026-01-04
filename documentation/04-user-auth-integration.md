@@ -122,6 +122,15 @@ For tenant-facing clients, **use only Supabase OTP** (email magic link / one-tim
 - Encourage duplicate signup attempts
 - Create additional recovery surface area (password resets, credential stuffing, etc.)
 
+### Recommended Authentication Types (Tenant Clients)
+
+Use one (or both) of these authentication types in tenant clients:
+
+- **Supabase OTP (email magic link / one-time code)**: `supabase.auth.signInWithOtp(...)`
+- **OAuth providers** (recommended): `supabase.auth.signInWithOAuth(...)` (e.g. Google, GitHub)
+
+Avoid email+password auth for tenant clients.
+
 ### Avoid Email Enumeration
 
 Do not reveal whether an email is registered. Always return the same UI message for:
