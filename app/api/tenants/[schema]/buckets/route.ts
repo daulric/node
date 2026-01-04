@@ -27,9 +27,7 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
     const supabase = await createClient()
 
     // NOTE: Database types may not include this table until types are regenerated.
-    const db = supabase as any
-
-    const { data, error } = await db
+    const { data, error } = await supabase
       .from('tenant_buckets')
       .select('bucket_id, created_at')
       .eq('tenant_schema', schema)
@@ -73,8 +71,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     // Create a private bucket if it doesn't exist.
     await createBucketIfMissing(bucketId, false)
 
-    const db = supabase as any
-    const { error: linkError } = await db.from('tenant_buckets').insert({
+    const { error: linkError } = await supabase.from('tenant_buckets').insert({
       tenant_schema: schema,
       bucket_id: bucketId,
     })

@@ -68,9 +68,7 @@ export async function POST(request: NextRequest) {
     try {
       await createBucketIfMissing(schemaName, false)
 
-      // NOTE: Database types may not include this table until types are regenerated.
-      // We intentionally cast to `any` here to avoid blocking builds.
-      const supabaseAdmin = createAdminClient() as any
+      const supabaseAdmin = createAdminClient()
 
       const { error: linkError } = await supabaseAdmin
         .from('tenant_buckets')

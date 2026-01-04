@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
 import {
@@ -252,23 +252,7 @@ export function SchemaTableList({ tables: initialTables, schemaName, canWrite = 
   // Create default tables state
   const [isCreatingDefaultTables, setIsCreatingDefaultTables] = useState(false)
 
-  // Load reference tables when dialog opens
-  useEffect(() => {
-    if ((addFkDialog.open || createTableDialog) && referenceTables.length === 0) {
-      loadReferenceTables()
-    }
-  }, [addFkDialog.open, createTableDialog])
-
-  // Load columns when reference table changes
-  useEffect(() => {
-    if (newFk.refSchema && newFk.refTable) {
-      loadRefTableColumns(newFk.refSchema, newFk.refTable)
-    } else {
-      setRefTableColumns([])
-    }
-  }, [newFk.refSchema, newFk.refTable])
-
-  const loadReferenceTables = async () => {
+  const loadReferenceTables = useCallback(async () => {
     try {
       const supabase = createClient()
       const { data, error } = await supabase.rpc('get_reference_tables', {
@@ -279,7 +263,23 @@ export function SchemaTableList({ tables: initialTables, schemaName, canWrite = 
     } catch (error) {
       console.error('Error loading reference tables:', error)
     }
-  }
+  }, [schemaName])
+
+  // Load reference tables when dialog opens
+  useEffect(() => {
+    if ((addFkDialog.open || createTableDialog) && referenceTables.length === 0) {
+      loadReferenceTables()
+    }
+  }, [addFkDialog.open, createTableDialog, loadReferenceTables, referenceTables.length])
+
+  // Load columns when reference table changes
+  useEffect(() => {
+    if (newFk.refSchema && newFk.refTable) {
+      loadRefTableColumns(newFk.refSchema, newFk.refTable)
+    } else {
+      setRefTableColumns([])
+    }
+  }, [newFk.refSchema, newFk.refTable])
 
   const loadRefTableColumns = async (schema: string, table: string) => {
     setLoadingRefColumns(true)

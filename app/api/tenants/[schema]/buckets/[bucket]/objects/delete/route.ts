@@ -1,5 +1,6 @@
 import { createClient } from '@/utils/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
+import type { FileObject } from '@supabase/storage-js'
 
 interface RouteParams {
   params: Promise<{ schema: string; bucket: string }>
@@ -44,9 +45,9 @@ async function collectAllObjectPaths(
     })
     if (error) throw error
 
-    for (const item of data || []) {
+    for (const item of (data || []) as Array<FileObject | { name: string; id: null }>) {
       // folders: id is null, name is folder name
-      if ((item as any)?.id == null) {
+      if (item.id == null) {
         const nextPrefix = current ? `${current}/${item.name}` : item.name
         queue.push(nextPrefix)
         continue
@@ -80,10 +81,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     const supabase = await createClient()
-    const db = supabase as any
 
     // Ensure bucket is linked to schema.
-    const { data: link, error: linkErr } = await db
+    const { data: link, error: linkErr } = await supabase
       .from('tenant_buckets')
       .select('bucket_id')
       .eq('tenant_schema', schema)

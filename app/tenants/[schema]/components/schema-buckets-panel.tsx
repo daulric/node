@@ -14,7 +14,6 @@ import {
   HardDrive,
   Folder,
   File as FileIcon,
-  ArrowLeft,
   ExternalLink,
   Upload,
   Trash2,
@@ -109,7 +108,7 @@ export function SchemaBucketsPanel({
       setObjects({
         prefix: json?.prefix || '',
         folders: json?.folders || [],
-        files: (json?.files || []).map((f: any) => ({
+        files: (json?.files || []).map((f: { name: string; updated_at?: string | null; created_at?: string | null }) => ({
           name: f.name,
           updated_at: f.updated_at ?? null,
           created_at: f.created_at ?? null,

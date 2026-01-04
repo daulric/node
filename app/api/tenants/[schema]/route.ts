@@ -1,6 +1,7 @@
 import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { NextRequest, NextResponse } from 'next/server'
+import type { StorageClient } from '@supabase/storage-js'
 
 interface RouteParams {
   params: Promise<{ schema: string }>
@@ -28,7 +29,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     }
 
     // Capture linked buckets BEFORE deleting tenant (tenant_buckets rows will be cascaded).
-    const { data: bucketRows, error: bucketErr } = (supabase as any)
+    const { data: bucketRows, error: bucketErr } = await supabase
       .from('tenant_buckets')
       .select('bucket_id')
       .eq('tenant_schema', schema)
@@ -41,7 +42,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       )
     }
 
-    const bucketIds: string[] = (bucketRows || []).map((r: any) => r.bucket_id).filter(Boolean)
+    const bucketIds: string[] = ((bucketRows || []) as Array<{ bucket_id: string }>).map((r) => r.bucket_id).filter(Boolean)
 
     // If we have buckets to delete, ensure service role is configured before we delete the schema.
     if (bucketIds.length > 0 && !process.env.SUPABASE_SERVICE_ROLE_KEY) {
@@ -72,7 +73,8 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       for (const bucketId of bucketIds) {
         try {
           // Empty the bucket (removes all objects). This is more reliable than manual traversal.
-          const { error: emptyErr } = await (supabaseAdmin.storage as any).emptyBucket(bucketId)
+          const storageAdmin = supabaseAdmin.storage as unknown as StorageClient
+          const { error: emptyErr } = await storageAdmin.emptyBucket(bucketId)
           if (emptyErr) throw emptyErr
 
           const { error: delErr } = await supabaseAdmin.storage.deleteBucket(bucketId)

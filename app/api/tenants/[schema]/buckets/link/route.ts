@@ -43,8 +43,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'Bucket does not exist.' }, { status: 404 })
     }
 
-    const db = supabase as any
-    const { error: linkError } = await db.from('tenant_buckets').insert({
+    const { error: linkError } = await supabase.from('tenant_buckets').insert({
       tenant_schema: schema,
       bucket_id: bucketId,
     })

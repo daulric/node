@@ -41,10 +41,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     const supabase = await createClient()
-    const db = supabase as any
 
     // Ensure this bucket is linked to this schema.
-    const { data: link, error: linkErr } = await db
+    const { data: link, error: linkErr } = await supabase
       .from('tenant_buckets')
       .select('bucket_id')
       .eq('tenant_schema', schema)

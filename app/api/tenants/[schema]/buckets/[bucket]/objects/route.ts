@@ -1,5 +1,6 @@
 import { createClient } from '@/utils/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
+import type { FileObject } from '@supabase/storage-js'
 
 interface RouteParams {
   params: Promise<{ schema: string; bucket: string }>
@@ -21,6 +22,8 @@ function normalizePrefix(prefix: string | null): string {
   return trimmed.replace(/^\/+/, '').replace(/\/+$/, '')
 }
 
+type StorageListItem = (FileObject & { id: string }) | { name: string; id: null }
+
 // GET /api/tenants/[schema]/buckets/[bucket]/objects?prefix=path/to/folder
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
@@ -35,11 +38,10 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const prefix = normalizePrefix(request.nextUrl.searchParams.get('prefix'))
 
     const supabase = await createClient()
-    const db = supabase as any
 
     // Ensure this bucket is linked to this schema.
     // RLS on tenant_buckets will hide rows users can't access.
-    const { data: link, error: linkErr } = await db
+    const { data: link, error: linkErr } = await supabase
       .from('tenant_buckets')
       .select('bucket_id')
       .eq('tenant_schema', schema)
@@ -62,10 +64,11 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    const folders = (data || []).filter((i: any) => i?.id == null).map((i: any) => i.name)
-    const files = (data || [])
-      .filter((i: any) => i?.id != null)
-      .map((i: any) => ({
+    const items = (data || []) as StorageListItem[]
+    const folders = items.filter((i) => i.id == null).map((i) => i.name)
+    const files = items
+      .filter((i): i is FileObject => (i as FileObject).id != null)
+      .map((i) => ({
         name: i.name,
         id: i.id,
         updated_at: i.updated_at ?? null,
