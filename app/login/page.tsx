@@ -8,8 +8,9 @@ import { createClient } from '@/utils/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { InputOTP, InputOTPGroup, InputOTPSlot, InputOTPSeparator } from '@/components/ui/input-otp'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
-import { Loader2, AlertCircle, Eye, EyeOff } from 'lucide-react'
+import { Loader2, AlertCircle, Mail } from 'lucide-react'
 import { toast } from 'sonner'
 
 // GitHub Icon Component
@@ -39,26 +40,30 @@ function LoginForm() {
   const redirectTo = searchParams.get('redirectTo') || '/tenants'
   
   const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [showPassword, setShowPassword] = useState(false)
+  const [otpToken, setOtpToken] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [isVerifying, setIsVerifying] = useState(false)
   const [isOAuthLoading, setIsOAuthLoading] = useState<'github' | 'google' | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState(false)
 
   const getErrorMessage = (error: Error): string => {
     const message = error.message.toLowerCase()
     
-    if (message.includes('invalid login credentials')) {
-      return 'Invalid email or password. Please try again.'
-    }
     if (message.includes('email not confirmed')) {
       return 'Please check your email and confirm your account first.'
     }
     if (message.includes('too many requests')) {
-      return 'Too many login attempts. Please wait a moment and try again.'
+      return 'Too many attempts. Please wait a moment and try again.'
     }
     if (message.includes('network')) {
       return 'Network error. Please check your connection.'
+    }
+    if (message.includes('token has expired') || message.includes('expired')) {
+      return 'That code has expired. Please request a new one.'
+    }
+    if (message.includes('invalid') || message.includes('token')) {
+      return 'Invalid code. Please try again.'
     }
     
     return error.message || 'Failed to log in. Please try again.'
@@ -87,26 +92,26 @@ function LoginForm() {
     }
   }
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const sendEmailOtp = async () => {
     setIsLoading(true)
     setError(null)
 
     try {
       const supabase = createClient()
       
-      const { error } = await supabase.auth.signInWithPassword({
+      const { error } = await supabase.auth.signInWithOtp({
         email: email.trim().toLowerCase(),
-        password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback?redirectTo=${encodeURIComponent(redirectTo)}`,
+        },
       })
 
       if (error) {
         throw error
       }
 
-      toast.success('Welcome back!')
-      router.push(redirectTo)
-      router.refresh()
+      setSuccess(true)
+      toast.success('Check your email for a sign-in link.')
     } catch (err) {
       const message = err instanceof Error ? getErrorMessage(err) : 'Failed to log in'
       setError(message)
@@ -116,8 +121,147 @@ function LoginForm() {
     }
   }
 
+  const handleEmailOtp = async (e: React.FormEvent) => {
+    e.preventDefault()
+    await sendEmailOtp()
+  }
+
+  const verifyEmailOtp = async () => {
+    setIsVerifying(true)
+    setError(null)
+
+    try {
+      const supabase = createClient()
+      const token = otpToken.replace(/\s+/g, '')
+
+      const { error } = await supabase.auth.verifyOtp({
+        email: email.trim().toLowerCase(),
+        token,
+        type: 'email',
+        options: {
+          redirectTo: `${window.location.origin}${redirectTo}`,
+        },
+      })
+
+      if (error) throw error
+
+      toast.success('Signed in successfully.')
+      router.push(redirectTo)
+      router.refresh()
+    } catch (err) {
+      const message = err instanceof Error ? getErrorMessage(err) : 'Failed to verify code'
+      setError(message)
+      toast.error(message)
+    } finally {
+      setIsVerifying(false)
+    }
+  }
+
+  if (success) {
+    return (
+      <Card className="w-full max-w-md bg-card/80 backdrop-blur-sm shadow-2xl border-border/60">
+        <CardHeader className="text-center pb-2">
+          <div className="mx-auto mb-4">
+            <Image
+              src="/logo.png"
+              alt="b12 Logo"
+              width={64}
+              height={64}
+              className="rounded-xl"
+              priority
+            />
+          </div>
+          <CardTitle className="text-2xl">Check your email</CardTitle>
+          <CardDescription>
+            We sent a one-time code to <span className="font-medium text-foreground">{email}</span>
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {error && (
+            <div className="flex items-start gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm">
+              <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+              <span>{error}</span>
+            </div>
+          )}
+
+          <div className="space-y-2">
+            <Label htmlFor="otp">One-time code</Label>
+            <div className="flex justify-center">
+              <InputOTP
+                maxLength={6}
+                value={otpToken}
+                onChange={setOtpToken}
+                disabled={isVerifying}
+                autoFocus
+              >
+                <InputOTPGroup>
+                  <InputOTPSlot index={0} className="bg-background/50 border-border text-foreground" />
+                  <InputOTPSlot index={1} className="bg-background/50 border-border text-foreground" />
+                  <InputOTPSlot index={2} className="bg-background/50 border-border text-foreground" />
+                </InputOTPGroup>
+                <InputOTPSeparator />
+                <InputOTPGroup>
+                  <InputOTPSlot index={3} className="bg-background/50 border-border text-foreground" />
+                  <InputOTPSlot index={4} className="bg-background/50 border-border text-foreground" />
+                  <InputOTPSlot index={5} className="bg-background/50 border-border text-foreground" />
+                </InputOTPGroup>
+              </InputOTP>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              If you don&apos;t see it, check spam/junk. Codes expire quickly.
+            </p>
+          </div>
+
+          <Button
+            className="w-full"
+            onClick={verifyEmailOtp}
+            disabled={isVerifying || otpToken.replace(/\s+/g, '').length < 6}
+          >
+            {isVerifying ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Verifying...
+              </>
+            ) : (
+              'Verify code'
+            )}
+          </Button>
+        </CardContent>
+        <CardFooter className="pt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <Button
+            variant="outline"
+            className="w-full"
+            onClick={() => {
+              setSuccess(false)
+              setOtpToken('')
+              setError(null)
+            }}
+            disabled={isVerifying}
+          >
+            Use a different email
+          </Button>
+          <Button
+            variant="outline"
+            className="w-full"
+            onClick={sendEmailOtp}
+            disabled={isLoading || isVerifying || !email.trim()}
+          >
+            {isLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Resending...
+              </>
+            ) : (
+              'Resend code'
+            )}
+          </Button>
+        </CardFooter>
+      </Card>
+    )
+  }
+
   return (
-    <Card className="w-full max-w-md bg-slate-800/50 border-slate-700 backdrop-blur-sm shadow-2xl">
+    <Card className="w-full max-w-md bg-card/80 backdrop-blur-sm shadow-2xl border-border/60">
       <CardHeader className="text-center pb-2">
         <div className="mx-auto mb-4">
           <Image
@@ -129,8 +273,8 @@ function LoginForm() {
             priority
           />
         </div>
-        <CardTitle className="text-2xl text-white">Welcome Back</CardTitle>
-        <CardDescription className="text-slate-400">
+        <CardTitle className="text-2xl">Welcome Back</CardTitle>
+        <CardDescription>
           Sign in to access the b12 dashboard
         </CardDescription>
       </CardHeader>
@@ -142,7 +286,7 @@ function LoginForm() {
             variant="outline"
             onClick={() => handleOAuthLogin('github')}
             disabled={isLoading || isOAuthLoading !== null}
-            className="bg-slate-900/50 border-slate-600 text-white hover:bg-slate-700 hover:text-white transition-colors"
+            className="w-full"
           >
             {isOAuthLoading === 'github' ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -158,7 +302,7 @@ function LoginForm() {
             variant="outline"
             onClick={() => handleOAuthLogin('google')}
             disabled={isLoading || isOAuthLoading !== null}
-            className="bg-slate-900/50 border-slate-600 text-white hover:bg-slate-700 hover:text-white transition-colors"
+            className="w-full"
           >
             {isOAuthLoading === 'google' ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -174,22 +318,22 @@ function LoginForm() {
         {/* Divider */}
         <div className="relative">
           <div className="absolute inset-0 flex items-center">
-            <span className="w-full border-t border-slate-600" />
+            <span className="w-full border-t border-border" />
           </div>
           <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-slate-800/50 px-2 text-slate-400">Or continue with email</span>
+            <span className="bg-card/80 px-2 text-muted-foreground">Or continue with email</span>
           </div>
         </div>
 
-        <form onSubmit={handleLogin} className="space-y-4">
+        <form onSubmit={handleEmailOtp} className="space-y-4">
             {error && (
-              <div className="flex items-start gap-2 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+              <div className="flex items-start gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm">
                 <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
                 <span>{error}</span>
               </div>
             )}
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-slate-300">Email</Label>
+              <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
                 type="email"
@@ -200,71 +344,30 @@ function LoginForm() {
                 disabled={isLoading || isOAuthLoading !== null}
                 autoComplete="email"
                 autoFocus
-                className="bg-slate-900/50 border-slate-600 text-white placeholder:text-slate-500 focus:border-emerald-500 focus:ring-emerald-500/20"
               />
-            </div>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="password" className="text-slate-300">Password</Label>
-                <Link 
-                  href="/forgot-password" 
-                  className="text-xs text-emerald-400 hover:text-emerald-300 transition-colors"
-                  tabIndex={-1}
-                >
-                  Forgot password?
-                </Link>
-              </div>
-              <div className="relative">
-                <Input
-                  id="password"
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  disabled={isLoading || isOAuthLoading !== null}
-                  autoComplete="current-password"
-                  className="bg-slate-900/50 border-slate-600 text-white placeholder:text-slate-500 pr-10 focus:border-emerald-500 focus:ring-emerald-500/20"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-300 transition-colors"
-                  tabIndex={-1}
-                >
-                  {showPassword ? (
-                    <EyeOff className="h-4 w-4" />
-                  ) : (
-                    <Eye className="h-4 w-4" />
-                  )}
-                </button>
-              </div>
             </div>
             <Button 
               type="submit" 
-              className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-medium transition-colors"
-              disabled={isLoading || isOAuthLoading !== null}
+              className="w-full"
+              disabled={isLoading || isOAuthLoading !== null || !email.trim()}
             >
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Signing in...
+                  Sending Code...
                 </>
               ) : (
-                'Sign In'
+                <>
+                  <Mail className="mr-2 h-4 w-4" />
+                  Send Code
+                </>
               )}
             </Button>
           </form>
         </CardContent>
         <CardFooter className="pt-2">
-          <div className="text-center text-sm text-slate-400 w-full">
-            Don&apos;t have an account?{' '}
-            <Link 
-              href="/signup" 
-              className="text-emerald-400 hover:text-emerald-300 font-medium transition-colors"
-            >
-              Sign up
-            </Link>
+          <div className="text-center text-xs text-muted-foreground w-full">
+            Passwords are disabled. If you don&apos;t have tenant access yet, contact an administrator.
           </div>
         </CardFooter>
     </Card>
@@ -273,26 +376,26 @@ function LoginForm() {
 
 function LoginSkeleton() {
   return (
-    <Card className="w-full max-w-md bg-slate-800/50 border-slate-700 backdrop-blur-sm animate-pulse shadow-2xl">
+    <Card className="w-full max-w-md bg-card/80 border-border/60 backdrop-blur-sm animate-pulse shadow-2xl">
       <CardHeader className="text-center pb-2">
         <div className="mx-auto mb-4">
-          <div className="h-16 w-16 bg-slate-700 rounded-xl" />
+          <div className="h-16 w-16 bg-muted rounded-xl" />
         </div>
-        <div className="h-8 bg-slate-700 rounded w-48 mx-auto" />
-        <div className="h-4 bg-slate-700 rounded w-64 mx-auto mt-2" />
+        <div className="h-8 bg-muted rounded w-48 mx-auto" />
+        <div className="h-4 bg-muted rounded w-64 mx-auto mt-2" />
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2">
-          <div className="h-4 bg-slate-700 rounded w-16" />
-          <div className="h-10 bg-slate-700 rounded" />
+          <div className="h-4 bg-muted rounded w-16" />
+          <div className="h-10 bg-muted rounded" />
         </div>
         <div className="space-y-2">
-          <div className="h-4 bg-slate-700 rounded w-20" />
-          <div className="h-10 bg-slate-700 rounded" />
+          <div className="h-4 bg-muted rounded w-20" />
+          <div className="h-10 bg-muted rounded" />
         </div>
       </CardContent>
       <CardFooter className="pt-2">
-        <div className="h-10 bg-slate-700 rounded w-full" />
+        <div className="h-10 bg-muted rounded w-full" />
       </CardFooter>
     </Card>
   )
@@ -300,7 +403,7 @@ function LoginSkeleton() {
 
 export default function LoginPage() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 flex items-center justify-center p-4">
       <Suspense fallback={<LoginSkeleton />}>
         <LoginForm />
       </Suspense>
