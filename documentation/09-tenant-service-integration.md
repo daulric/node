@@ -185,7 +185,7 @@ export function AuthProvider({
   const [loading, setLoading] = useState(true)
 
   async function ensureProfile(currentUser: User) {
-    const { data, error } = await supabase.rpc("public.ensure_user_profile", {
+    const { data, error } = await supabase.schema("public").rpc("ensure_user_profile", {
       target_schema: tenantSchema,
       user_name: (currentUser.user_metadata as any)?.full_name ?? null,
     })
@@ -351,7 +351,7 @@ In the UI, this is done by looking up the user id by email, then calling `grant_
 After the user authenticates, create/ensure their per-tenant profile row inside `{schema}.users`:
 
 ```ts
-const { data: profile } = await supabase.rpc('public.ensure_user_profile', {
+const { data: profile } = await supabase.schema("public").rpc('ensure_user_profile', {
   target_schema: schemaName,
   user_name: session.user.user_metadata?.full_name ?? null
 })
