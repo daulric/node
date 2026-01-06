@@ -12,6 +12,7 @@ A complete multi-tenant architecture for Supabase with schema-per-tenant isolati
 6. [Schema Inspection](./06-schema-inspection.md)
 7. [API Reference](./07-api-reference.md)
 8. [Client Examples](./08-client-examples.md)
+9. [Tenant Service Integration](./09-tenant-service-integration.md)
 
 ## Quick Start
 
